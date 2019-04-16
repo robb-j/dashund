@@ -45,12 +45,13 @@ import {
 } from 'dashund'
 
 let config = await parseDashConfig('.dashund') // A folder w/ widgets.yml and authz.json
-config.zones
-config.authorizations
+config.zones // Zone[]
+config.authorizations // Authorization[]
 
 let server = createHttpApi([
   {
-    namespace: 'trello:lists',
+    name: 'gitlab/ci-jobs',
+    interval: '5m',
     handler: async ctx => {
       ctx.res.send('...')
     }
@@ -58,5 +59,18 @@ let server = createHttpApi([
 ])
 
 await server.start(3000)
+```
 
+Example requests with [httpie](https://httpie.org/):
+
+```bash
+http https://dashboard.io/gitlab/ci-jobs
+```
+
+Example socket subscriptions with [akita-ws](https://github.com/robb-j/akita):
+
+```bash
+akita wss://dashboard.io
+> {"type": "subscribe", "name": "gitlab/ci-jobs"}
+> {"type": "unsubscribe", "name": "gitlab/ci-jobs"}
 ```
