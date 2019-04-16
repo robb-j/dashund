@@ -5,7 +5,7 @@ Tools for making dashboards as simple and quick as possible
 ## Project components
 
 - A CLI for managing widgets in zones
-- A CLI for authenticating services
+- A CLI for authenticating third party services
 - An API for reading widgets and authorizations (authz)
 - An API for scaffolding an http API with socket based subscriptions
 - UI components for rendering widgets
@@ -16,6 +16,12 @@ In this document:
 * Authentication (authn) is the process of prooving who you are.
 * Authorization (authz) is the proof you received when authentication.
 
+## How it should work
+
+There will be a CLI for configuring widgets in groups (zones) and authenticating with third party services.
+There will be an API library for reading in widget/authorization files and scaffolding an api with web sockets.
+There will be a UI library for rendering widgets which subscribe to the api's web sockets.
+
 ## The CLI
 
 ```bash
@@ -23,9 +29,9 @@ Usage: dashund [options] <command> <subcommand>
 
 Commands:
 
-  get <widget/auth/zone> [identifier]    – Get an existing resource
-  create <widget/auth/zone>              – Create a new resource
-  delete <widget/auth/zone> <identifier> – Delete a resource
+  get <widget|auth|zone> [identifier]    – Get an existing resource
+  create <widget|auth|zone>              – Create a new resource
+  delete <widget|auth|zone> <identifier> – Delete a resource
   
   refreshAuth – Refresh any expired authz authorization
 ```
