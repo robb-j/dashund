@@ -2,9 +2,12 @@
 
 Tools for making dashboards as simple and quick as possible
 
+> This document is currently an exploration into what this project could be.
+> It scopes our the ideas and interfaces it could implement.
+
 ## Project components
 
-- A CLI for managing widgets in zones
+- A CLI for managing widgets within zones
 - A CLI for authenticating third party services
 - An API for reading widgets and authorizations (authz)
 - An API for scaffolding an http API with socket based subscriptions
@@ -24,52 +27,103 @@ There will be a UI library for rendering widgets which subscribe to the api's we
 
 ## The CLI
 
-```bash
-Usage: dashund [options] <command> <subcommand>
+```
+Usage: dashund [options] <command>
+
+Options:
+  -f --file  Specify where your .dashund folder is
 
 Commands:
-
-  get <widget|auth|zone> [identifier]    – Get an existing resource
-  create <widget|auth|zone>              – Create a new resource
-  delete <widget|auth|zone> <identifier> – Delete a resource
+  get <widget|auth|zone> [identifier]     Get an existing resource
+  create <widget|auth|zone> <identifier>  Create a new resource
+  delete <widget|auth|zone> <identifier>  Delete a resource
   
-  refreshAuth – Refresh any expired authz authorization
+  refreshAuth                             Refresh any expired authorization
+  move <identifier> <destination> <pos>   Move a widget to a new zone/position
+```
+
+Which should create a filestructure like:
+
+```bash
+.dashund/
+  widgets.yml
+  authorizations.json
 ```
 
 ## The API
 
+The base types
+
 ```ts
+interface Component<T = any> {
+  id: string
+  config: T
+  
+  static configureFromCLI(): Component { }
+  validateConfiguration(config: T) { }
+}
+
+class Widget<T> implements Component<T> {}
+class Authorization<T> implements Component<T> {}
+```
+
+Build your own CLI, **cli.ts**, for example:
+
+```ts
+import { TrelloAuthz, MonzoAuthz, GitLabAuthz } from './authorizations'
+import { TrelloListWidget, MonzoBalanceWidget } from './widgets'
+import { createCli } from 'dashund'
+
+createCli({
+  authorizations: { TrelloAuthz, MonzoAuthz, GitLabAuthz },
+  widgets: { TrelloListWidget, MonzoBalanceWidget }
+})
+```
+
+Run your own api
+
+```js
 import {
   parseDashConfig,
-  parseWidgets,
-  parseAuthorizations,
-  createHttpApi,
+  createDashundApi,
   DashConfig,
   Zone,
   Widget,
   Authorization
 } from 'dashund'
 
-let config = await parseDashConfig('.dashund') // A folder w/ widgets.yml and authz.json
-config.zones // Zone[]
-config.authorizations // Authorization[]
+// Look at `pwd`/.dashund by default
+let config = await parseDashConfig({
+  authorities: { TrelloAuthority, GitLabAuthority },
+  widgets: { TrelloListWidget, GitLabJobsWidget }
+})
 
-let server = createHttpApi([
+config.zones // Map<string, Zone[]>
+config.authorizations // Map<string, Authorization[]>
+
+let app = express()
+
+app.use(createDashundApi(config, [
   {
     name: 'gitlab/ci-jobs',
     interval: '5m',
     handler: async ctx => {
-      ctx.res.send('...')
+      
+      ctx.zones // Map<string, Zone>
+      ctx.authorizations // Map<string, Authorization>
+      
+      return { msg: 'Hello, world!' }
     }
   }
-])
+]))
 
-await server.start(3000)
+await new Promise(resolve => app.listen(3000, resolve))
 ```
 
 Example requests with [httpie](https://httpie.org/):
 
 ```bash
+# Fetch a specify resource, calling it's handler
 http https://dashboard.io/gitlab/ci-jobs
 ```
 
