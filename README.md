@@ -59,12 +59,16 @@ interface Component<T = any> {
   id: string
   config: T
   
-  static configureFromCLI(): Component { }
-  validateConfiguration(config: T) { }
+  async configureFromCLI() { }
+  async validateConfiguration(config: T) { }
 }
 
-class Widget<T> implements Component<T> {}
-class Authorization<T> implements Component<T> {}
+class Widget<T> implements Component<T> {
+  constructor(public id: string, public config: T) {}
+}
+class Authorization<T> implements Component<T> {
+  constructor(public id: string, public config: T) {}
+}
 ```
 
 Build your own CLI, **cli.ts**, for example:
@@ -78,6 +82,42 @@ createCli({
   authorizations: { TrelloAuthz, MonzoAuthz, GitLabAuthz },
   widgets: { TrelloListWidget, MonzoBalanceWidget }
 })
+```
+
+An example widget
+
+```ts
+export type GitHubActiviyConfig = {
+  name: string,
+  numberOfItems: number
+}
+
+export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
+  
+  async configureFromCLI() {
+    const { name, numberOfItems } = await prompts([
+      {
+        type: 'string',
+        name: 'name',
+        message: 'What is the name of this component'
+      },
+      {
+        type: 'number',
+        name: 'numberOfItems'
+      }
+    ])
+    
+    await this.requireAuthorization('github')
+    
+    this.config = { name, numberOfItems }
+  }
+  
+  async validateConfiguration(config: GitHubActiviyConfig) {
+    if (config.numberOfItems < 1) {
+      throw new Error('Must be at least 1 item')
+    }
+  }
+}
 ```
 
 Run your own api
