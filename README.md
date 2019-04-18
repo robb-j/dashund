@@ -25,7 +25,7 @@ There will be a CLI for configuring widgets in groups (zones) and authenticating
 There will be an API library for reading in widget/authorization files and scaffolding an api with web sockets.
 There will be a UI library for rendering widgets which subscribe to the api's web sockets.
 
-## The CLI
+## CLI Usage
 
 ```
 Usage: dashund [options] <command>
@@ -64,6 +64,8 @@ interface Component<T = any> {
 }
 
 class Widget<T> implements Component<T> {
+  authorizations = new Array<string>()
+  
   constructor(public id: string, public config: T) {}
 }
 class Authorization<T> implements Component<T> {
@@ -71,79 +73,68 @@ class Authorization<T> implements Component<T> {
 }
 ```
 
-Build your own CLI, **cli.ts**, for example:
+An example widget
 
 ```ts
+export type GitHubActiviyConfig = {
+  name: string
+}
+
+export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
+  authorizations = ['github']
+  
+  async configureFromCLI() {
+    const { name } = await prompts([
+      {
+        type: 'string',
+        name: 'name',
+        message: 'What is the name of this component'
+      }
+    ])
+    
+    this.config = { name }
+  }
+  
+  async validateConfiguration(config) {
+    if (!config.name) throw new Error('Name is required')
+  }
+}
+```
+
+Configure your instance, **dashund.ts**
+
+```js
+import { Dashund } from 'dashund'
+
 import { TrelloAuthz, MonzoAuthz, GitLabAuthz } from './authorizations'
 import { TrelloListWidget, MonzoBalanceWidget } from './widgets'
-import { createCli } from 'dashund'
 
-createCli({
+export const dashund = new Dashund({
   authorizations: { TrelloAuthz, MonzoAuthz, GitLabAuthz },
   widgets: { TrelloListWidget, MonzoBalanceWidget }
 })
 ```
 
-An example widget
+Create a cli entrypoint, **cli.ts**
 
 ```ts
-export type GitHubActiviyConfig = {
-  name: string,
-  numberOfItems: number
-}
-
-export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
-  
-  async configureFromCLI() {
-    const { name, numberOfItems } = await prompts([
-      {
-        type: 'string',
-        name: 'name',
-        message: 'What is the name of this component'
-      },
-      {
-        type: 'number',
-        name: 'numberOfItems'
-      }
-    ])
-    
-    await this.requireAuthorization('github')
-    
-    this.config = { name, numberOfItems }
-  }
-  
-  async validateConfiguration(config: GitHubActiviyConfig) {
-    if (config.numberOfItems < 1) {
-      throw new Error('Must be at least 1 item')
-    }
-  }
-}
+import { dashund } from './dashund'
+dashund.runCLI(process.cwd(), process.argv)
 ```
 
 Run your own api
 
 ```js
-import {
-  parseDashConfig,
-  createDashundApi,
-  DashConfig,
-  Zone,
-  Widget,
-  Authorization
-} from 'dashund'
+import { dashund } from './dashund'
 
-// Look at `pwd`/.dashund by default
-let config = await parseDashConfig({
-  authorities: { TrelloAuthority, GitLabAuthority },
-  widgets: { TrelloListWidget, GitLabJobsWidget }
-})
+let config = await dashund.parseConfig(process.cwd())
 
 config.zones // Map<string, Zone[]>
 config.authorizations // Map<string, Authorization[]>
 
 let app = express()
 
-app.use(createDashundApi(config, [
+app.use(dashund.createApi(config, [
   {
     name: 'gitlab/ci-jobs',
     interval: '5m',
@@ -157,7 +148,7 @@ app.use(createDashundApi(config, [
   }
 ]))
 
-await new Promise(resolve => app.listen(3000, resolve))
+app.listen(3000, resolve)
 ```
 
 Example requests with [httpie](https://httpie.org/):
