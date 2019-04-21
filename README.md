@@ -16,8 +16,8 @@ Tools for making dashboards as simple and quick as possible
 
 In this document:
 
-* Authentication (authn) is the process of prooving who you are.
-* Authorization (authz) is the proof you received when authentication.
+- Authentication (authn) is the process of prooving who you are.
+- Authorization (authz) is the proof you received when authentication.
 
 ## How it should work
 
@@ -37,7 +37,7 @@ Commands:
   get <widget|auth|zone> [identifier]     Get an existing resource
   create <widget|auth|zone> <identifier>  Create a new resource
   delete <widget|auth|zone> <identifier>  Delete a resource
-  
+
   refreshAuth                             Refresh any expired authorization
   move <identifier> <destination> <pos>   Move a widget to a new zone/position
 ```
@@ -58,14 +58,14 @@ The base types
 interface Component<T = any> {
   id: string
   config: T
-  
+
   async configureFromCLI() { }
   async validateConfiguration(config: T) { }
 }
 
 class Widget<T> implements Component<T> {
   authorizations = new Array<string>()
-  
+
   constructor(public id: string, public config: T) {}
 }
 class Authorization<T> implements Component<T> {
@@ -82,7 +82,7 @@ export type GitHubActiviyConfig = {
 
 export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
   authorizations = ['github']
-  
+
   async configureFromCLI() {
     const { name } = await prompts([
       {
@@ -91,10 +91,10 @@ export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
         message: 'What is the name of this component'
       }
     ])
-    
+
     this.config = { name }
   }
-  
+
   async validateConfiguration(config) {
     if (!config.name) throw new Error('Name is required')
   }
@@ -119,7 +119,7 @@ Create a cli entrypoint, **cli.ts**
 
 ```ts
 import { dashund } from './dashund'
-dashund.runCLI(process.cwd(), process.argv)
+dashund.runCLI(process.argv, process.cwd())
 ```
 
 Run your own api
@@ -134,19 +134,20 @@ config.authorizations // Map<string, Authorization[]>
 
 let app = express()
 
-app.use(dashund.createApi(config, [
-  {
-    name: 'gitlab/ci-jobs',
-    interval: '5m',
-    handler: async ctx => {
-      
-      ctx.zones // Map<string, Zone>
-      ctx.authorizations // Map<string, Authorization>
-      
-      return { msg: 'Hello, world!' }
+app.use(
+  dashund.createApi(config, [
+    {
+      name: 'gitlab/ci-jobs',
+      interval: '5m',
+      handler: async ctx => {
+        ctx.zones // Map<string, Zone>
+        ctx.authorizations // Map<string, Authorization>
+
+        return { msg: 'Hello, world!' }
+      }
     }
-  }
-]))
+  ])
+)
 
 app.listen(3000, resolve)
 ```

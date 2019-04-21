@@ -1,6 +1,0 @@
-#
-# Configuration for Prettier
-#
-
-semi: false
-singleQuote: true
