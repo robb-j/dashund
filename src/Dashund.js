@@ -10,17 +10,32 @@ const {
 } = require('fs')
 const YAML = require('yaml')
 
-const validResources = ['widget', 'auth', 'zone', 'all']
-
 const catchAndLog = block => async (...args) => {
   try {
     await block(...args)
   } catch (error) {
-    console.log(error)
+    console.log(error.message)
+    console.log(error.stack.split('\n')[1])
   }
 }
 
+const stringToChoice = string => ({ title: string, value: string })
+
+// interface Configurable {
+//   create(config: any): Widget
+//   configureFromCli(): Widget
+//   validateConfig(config: any)
+// }
+
 class Dashund {
+  get hasWidgets() {
+    return Array.from(this.widgets.keys()).length > 0
+  }
+
+  get hasAuthzs() {
+    return Array.from(this.authz.keys()).length > 0
+  }
+
   constructor(widgets, authorizations) {
     this.widgets = new Map(Object.entries(widgets))
     this.authz = new Map(Object.entries(authorizations))
@@ -47,6 +62,7 @@ class Dashund {
       }
     } catch (error) {
       console.log(error.message)
+      console.log(error.stack.split('\n')[1])
     }
     return config
   }
@@ -75,7 +91,7 @@ class Dashund {
     Object.keys(data).forEach(zone => {
       output[zone] = {
         name: zone,
-        widgets: data[zone].widgets.map(config =>
+        widgets: data[zone].map(config =>
           this.widgets.get(config.type).create(config)
         )
       }
@@ -119,13 +135,19 @@ class Dashund {
 
     switch (type) {
       case 'zone':
-        return this.createZone(cwd, config)
+        await this.createZone(config)
+        break
+      case 'widget':
+        await this.createWidget(config)
+        break
       default:
         throw new Error(`Unknown type '${type}'`)
     }
+
+    await this.saveConfig(cwd, config)
   }
 
-  async createZone(cwd, config) {
+  async createZone(config) {
     let { name } = await prompts([
       {
         type: 'text',
@@ -134,11 +156,59 @@ class Dashund {
       }
     ])
 
-    if (config.zones[name]) throw new Error(`Zone '${name}' already exists`)
+    if (!name) throw new Error('Cancelled')
 
-    config.zones[name] = { name, widgets: [] }
+    if (config.zones[name]) {
+      throw new Error(`Zone '${name}' already exists`)
+    }
 
-    await this.saveConfig(cwd, config)
+    config.zones[name] = []
+  }
+
+  async createWidget(config) {
+    if (!this.hasWidgets) throw new Error('No widgets available')
+
+    let zone = Object.keys(config.zones)[0]
+
+    if (!zone) {
+      await this.createZone(config)
+      zone = Object.keys(config.zones)[0]
+    } else {
+      ;({ zone } = await prompts({
+        type: 'select',
+        name: 'zone',
+        message: 'Pick a zone',
+        choices: Object.keys(config.zones).map(stringToChoice)
+      }))
+    }
+
+    if (!zone) throw new Error('Cancelled')
+
+    let { name, type } = await prompts([
+      {
+        type: 'text',
+        name: 'name',
+        message: 'Widget name'
+      },
+      {
+        type: 'select',
+        name: 'type',
+        message: 'Pick a type',
+        choices: Array.from(this.widgets.keys()).map(stringToChoice)
+      }
+    ])
+
+    if (!name || !type) throw new Error('Cancelled')
+
+    let widgetConfig = await this.widgets.get(type).configureFromCli()
+
+    console.log({ name, zone, type, widgetConfig })
+
+    config.zones[zone].push({
+      id: name,
+      type: type,
+      config: widgetConfig
+    })
   }
 
   async delete(cwd, type, id) {
