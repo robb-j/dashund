@@ -1,4 +1,4 @@
-import { Dashund } from './Dashund'
+const { Dashund } = require('./Dashund')
 
 let dash = new Dashund({}, {})
 
