@@ -166,3 +166,52 @@ akita wss://dashboard.io
 > {"type": "subscribe", "name": "gitlab/ci-jobs"}
 > {"type": "unsubscribe", "name": "gitlab/ci-jobs"}
 ```
+
+---
+
+Exploring modular cli commands
+
+```js
+class CommandLine {
+  commands = []
+
+  addModule(command) {
+    this.commands.push(command)
+  }
+
+  runCLI(cwd = process.cwd()) {
+    for (let cmd of this.commands) {
+      let yargs = new Yargs()
+    }
+  }
+}
+
+class Command {
+  configure(yargs, config = null) {}
+
+  wrapWithErrorHandler(block) {
+    return async (...args) => {
+      try {
+        await block(...args)
+      } catch (error) {
+        console.log(error.message)
+        console.log(error.stack.split('\n')[1])
+      }
+    }
+  }
+
+  loadConfig() {}
+}
+
+class GetCommand extends Command {
+  configure(cli) {
+    cli.yargs
+      .command('get <type> [id]')
+      .action(this.catchAndLog((type, id) => this.exec(cli.cwd, type, id)))
+  }
+
+  async exec(cwd, type, id) {
+    console.log(config)
+  }
+}
+```
