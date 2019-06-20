@@ -1,13 +1,22 @@
 const Yargs = require('yargs')
 const { catchAndLog } = require('../utils')
 
+const { getWidgetCommand } = require('./get/widget')
+const { getZoneCommand } = require('./get/zone')
+const { getTokenCommand } = require('./get/token')
+const { getAllCommand } = require('./get/all')
+
 /** @param cli {Yargs} */
 function getCommand(cli, dashund) {
   cli.command(
     'get',
     'Get a Dashund resource from the local .dashund folder',
-    yargs => yargs,
-    catchAndLog(args => exec(dashund, args))
+    yargs => {
+      getWidgetCommand(yargs, dashund)
+      getZoneCommand(yargs, dashund)
+      getTokenCommand(yargs, dashund)
+      getAllCommand(yargs, dashund)
+    }
   )
 }
 
