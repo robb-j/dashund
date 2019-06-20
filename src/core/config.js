@@ -50,10 +50,10 @@ class Config {
 
       this.zones.set(zone, {
         title: zone,
-        widgets: widgets.map(config => {
-          const type = this.widgetTypes.get(config.type)
-          if (!type) throw new Error(`Invalid widget ${config.type}`)
-          return type.create(config)
+        widgets: widgets.map(widget => {
+          const type = this.widgetTypes.get(widget.type)
+          if (!type) throw new Error(`Invalid widget ${widget.type}`)
+          return type.create(widget)
         })
       })
     }

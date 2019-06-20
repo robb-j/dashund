@@ -20,7 +20,7 @@ function executeCreateZone(dashund, args) {
   let config = dashund.loadConfig(path)
 
   if (config.zones.has(identifier)) {
-    throw new Error('Zone already exists')
+    throw new Error(`Zone '${identifier}' already exists`)
   }
 
   config.zones.set(identifier, [])

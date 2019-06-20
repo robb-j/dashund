@@ -1,14 +1,46 @@
 const Yargs = require('yargs')
+const { Dashund } = require('../../dashund')
+const { catchAndLog } = require('../../utils')
 
+/** @param {Yargs} cli */
 function createWidgetCommand(cli, dashund) {
   cli.command(
-    'widget',
+    'widget <zone> <identifier> <type>',
     'Show a dashund widget',
     yargs => yargs,
-    args => {
-      console.log('create_widget')
-    }
+    catchAndLog(args => executeCreateWidget(dashund, args))
   )
 }
 
-module.exports = { createWidgetCommand }
+/** @param {Dashund} dashund */
+async function executeCreateWidget(dashund, args) {
+  const { path, zone, identifier, type } = args
+
+  let config = dashund.loadConfig(path)
+
+  // Fail for invalid widget types
+  if (!config.zones.has(zone)) {
+    throw new Error(`Zone '${zone}' doesn't exist`)
+  }
+
+  // Fail for invalid widget types
+  if (!dashund.widgetTypes.has(type)) {
+    throw new Error(`Widget '${type}' doesn't exist`)
+  }
+
+  // Create the widget using it's type
+  let WidgetType = dashund.widgetTypes.get(type)
+  let widget = await WidgetType.createFromCLI()
+
+  // Store the widget
+  config.zones.get(zone).push({
+    type: type,
+    id: identifier,
+    ...widget
+  })
+
+  // Save the config
+  config.save(path)
+}
+
+module.exports = { createWidgetCommand, executeCreateWidget }
