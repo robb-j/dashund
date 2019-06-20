@@ -74,7 +74,6 @@ class Config {
 
     let widgetsData = {}
     this.zones.forEach((widgets, zoneName) => {
-      console.log(widgets)
       widgetsData[zoneName] = widgets
     })
 
