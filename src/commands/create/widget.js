@@ -25,12 +25,23 @@ async function executeCreateWidget(dashund, args) {
 
   // Fail for invalid widget types
   if (!dashund.widgetTypes.has(type)) {
-    throw new Error(`Widget '${type}' doesn't exist`)
+    throw new Error(`Invalid Widget type '${type}'`)
   }
 
   // Create the widget using it's type
   let WidgetType = dashund.widgetTypes.get(type)
   let widget = await WidgetType.createFromCLI()
+
+  // Fail if required tokens are missing
+  if (Array.isArray(WidgetType.requiredTokens)) {
+    let missing = WidgetType.requiredTokens.filter(
+      tokenName => !config.tokens.has(tokenName)
+    )
+
+    if (missing.length > 0) {
+      throw new Error(`${type} requires tokens: ${missing.join(', ')}`)
+    }
+  }
 
   // Store the widget
   config.zones.get(zone).push({

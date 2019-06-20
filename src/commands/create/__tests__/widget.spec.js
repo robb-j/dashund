@@ -3,8 +3,9 @@ const { Dashund } = require('../../../dashund')
 const { Config } = require('../../../core')
 
 const makeMockWidget = () => ({
+  requiredTokens: [],
   create: jest.fn(initial => initial),
-  createFromCLI: jest.fn(() => ({})),
+  createFromCLI: jest.fn(() => ({ configuredFromCLI: true })),
   validate: jest.fn(() => true)
 })
 
@@ -39,13 +40,21 @@ describe('#executeCreateWidget', () => {
     await expect(promise).rejects.toThrow()
   })
 
-  it('fail if the widget doesn no exist', async () => {
+  it('should fail if the widget type doesn no exist', async () => {
     let promise = executeCreateWidget(dashund, {
       path: 'test_dir',
       zone: 'zone_a',
       identifier: 'new_widget',
       type: 'InvalidWidget'
     })
+
+    await expect(promise).rejects.toThrow()
+  })
+
+  it('should fail for missing tokens', async () => {
+    MockWidget.requiredTokens = ['MockToken']
+
+    let promise = executeCreateWidget(dashund, correctWidgetArgs)
 
     await expect(promise).rejects.toThrow()
   })
@@ -60,15 +69,11 @@ describe('#executeCreateWidget', () => {
     await executeCreateWidget(dashund, correctWidgetArgs)
 
     expect(config.zones.get('zone_a')).toHaveLength(1)
-  })
-
-  it('should store the identifier and type of the widget', async () => {
-    await executeCreateWidget(dashund, correctWidgetArgs)
-
-    let widget = config.zones.get('zone_a')[0]
-
-    expect(widget.id).toEqual('new_widget')
-    expect(widget.type).toEqual('MockWidget')
+    expect(config.zones.get('zone_a')).toContainEqual({
+      id: 'new_widget',
+      type: 'MockWidget',
+      configuredFromCLI: true
+    })
   })
 
   it('should save the config', async () => {
