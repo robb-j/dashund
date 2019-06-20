@@ -3,16 +3,16 @@ const { readdirSync, readFileSync } = require('fs')
 const Yaml = require('yaml')
 
 class Config {
-  constructor(widgetTypes, authzTypes) {
-    this.zones = {}
-    this.authz = {}
+  constructor(widgetTypes = new Map(), tokenTypes = new Map()) {
+    this.zones = new Map()
+    this.tokens = new Map()
     this.widgetTypes = widgetTypes
-    this.authzTypes = authzTypes
+    this.tokenTypes = tokenTypes
   }
 
-  static from(path = '.', widgetTypes, authzTypes) {
+  static from(path = '.', widgetTypes, tokenTypes) {
     const configDir = join(path, '.dashund')
-    const config = new Config(widgetTypes, authzTypes)
+    const config = new Config(widgetTypes, tokenTypes)
 
     let paths
     try {
@@ -32,7 +32,7 @@ class Config {
           join(configDir, 'authorizations.json'),
           'utf8'
         )
-        config.parseAuthz(JSON.parse(authData))
+        config.parseToken(JSON.parse(authData))
       }
     } catch (error) {
       console.log(error)
@@ -45,20 +45,20 @@ class Config {
     for (let [zone, widgets] of Object.entries(data)) {
       if (!Array.isArray(widgets)) throw new Error(`${zone} is not an array`)
 
-      this.zones[zone] = {
+      this.zones.set(zone, {
         title: zone,
         widgets: widgets.map(config => {
           const type = this.widgetTypes.get(config.type)
           if (!type) throw new Error(`Invalid widget ${config.type}`)
           return type.create(config)
         })
-      }
+      })
     }
   }
 
-  parseAuthz(data) {
+  parseToken(data) {
     for (let [type, config] of Object.entries(data)) {
-      this.authz[type] = { type, ...config }
+      this.tokens.set(type, { type, ...config })
     }
   }
 }

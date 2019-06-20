@@ -13,11 +13,11 @@ const makeMockConfigurable = () => {
 }
 
 describe('Config', () => {
-  let fakeWidgetTypes, fakeAuthzTypes
+  let fakeWidgetTypes, fakeTokenTypes
 
   beforeEach(() => {
     fakeWidgetTypes = new Map()
-    fakeAuthzTypes = new Map()
+    fakeTokenTypes = new Map()
 
     fakeWidgetTypes.set('some_widget', makeMockConfigurable())
   })
@@ -51,12 +51,13 @@ describe('Config', () => {
         zone_a: [{ type: 'some_widget', name: 'geoff' }]
       }
 
-      let config = new Config(fakeWidgetTypes, fakeAuthzTypes)
+      let config = new Config(fakeWidgetTypes, fakeTokenTypes)
       config.parseZones(input)
 
-      expect(config.zones.zone_a).toBeDefined()
+      let zone = config.zones.get('zone_a')
+      expect(zone).toBeDefined()
 
-      const { title, widgets } = config.zones.zone_a
+      const { title, widgets } = zone
       expect(title).toEqual('zone_a')
       expect(widgets).toContainEqual({
         type: 'some_widget',
@@ -66,18 +67,19 @@ describe('Config', () => {
     })
   })
 
-  describe('.parseAuthz', () => {
-    it('should parse authz and store on self', () => {
+  describe('.parseToken', () => {
+    it('should parse tokens and store on self', () => {
       let input = {
         some_service: { secret: 'password' }
       }
 
-      let config = new Config(fakeWidgetTypes, fakeAuthzTypes)
-      config.parseAuthz(input)
+      let config = new Config(fakeWidgetTypes, fakeTokenTypes)
+      config.parseToken(input)
 
-      expect(config.authz.some_service).toBeDefined()
+      let service = config.tokens.get('some_service')
+      expect(service).toBeDefined()
 
-      const { type, secret } = config.authz.some_service
+      const { type, secret } = service
       expect(type).toEqual('some_service')
       expect(secret).toEqual('password')
     })

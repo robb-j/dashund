@@ -8,21 +8,21 @@ Tools for making dashboards as simple and quick as possible
 ## Project components
 
 - A CLI for managing widgets within zones
-- A CLI for authenticating third party services
-- An API for reading widgets and authorizations (authz)
+- A CLI for authenticating third party services and storing tokens
+- An API for reading widgets and tokens
 - An API for scaffolding an http API with socket based subscriptions
 - UI components for rendering widgets
 - UI tools for subscribing to sockets and re-rendering
 
 In this document:
 
-- Authentication (authn) is the process of prooving who you are.
+- Authentication (authn) is the process of proving who you are.
 - Authorization (authz) is the proof you received when authentication.
 
 ## How it should work
 
 There will be a CLI for configuring widgets in groups (zones) and authenticating with third party services.
-There will be an API library for reading in widget/authorization files and scaffolding an api with web sockets.
+There will be an API library for reading in widget/token files and scaffolding an api with web sockets.
 There will be a UI library for rendering widgets which subscribe to the api's web sockets.
 
 ## CLI Usage
@@ -38,7 +38,7 @@ Commands:
   create <widget|auth|zone> <identifier>  Create a new resource
   delete <widget|auth|zone> <identifier>  Delete a resource
 
-  refreshAuth                             Refresh any expired authorization
+  refreshAuth                             Refresh any expired tokens
   move <identifier> <destination> <pos>   Move a widget to a new zone/position
 ```
 
@@ -47,7 +47,7 @@ Which should create a filestructure like:
 ```bash
 .dashund/
   widgets.yml
-  authorizations.json
+  tokens.json
 ```
 
 ## The API
@@ -64,7 +64,7 @@ interface Component<T = any> {
 }
 
 class Widget<T> implements Component<T> {
-  authorizations = new Array<string>()
+  tokens = new Array<string>()
 
   constructor(public id: string, public config: T) {}
 }
@@ -81,7 +81,7 @@ export type GitHubActiviyConfig = {
 }
 
 export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
-  authorizations = ['github']
+  tokens = ['github']
 
   async configureFromCLI() {
     const { name } = await prompts([
@@ -106,11 +106,11 @@ Configure your instance, **dashund.ts**
 ```js
 import { Dashund } from 'dashund'
 
-import { TrelloAuthz, MonzoAuthz, GitLabAuthz } from './authorizations'
+import { TrelloToken, MonzoToken, GitLabToken } from './tokens'
 import { TrelloListWidget, MonzoBalanceWidget } from './widgets'
 
 export const dashund = new Dashund({
-  authorizations: { TrelloAuthz, MonzoAuthz, GitLabAuthz },
+  tokens: { TrelloToken, MonzoToken, GitLabToken },
   widgets: { TrelloListWidget, MonzoBalanceWidget }
 })
 ```
@@ -130,7 +130,7 @@ import { dashund } from './dashund'
 let config = await dashund.parseConfig(process.cwd())
 
 config.zones // Map<string, Zone[]>
-config.authorizations // Map<string, Authorization[]>
+config.tokens // Map<string, Authorization[]>
 
 let app = express()
 
@@ -141,7 +141,7 @@ app.use(
       interval: '5m',
       handler: async ctx => {
         ctx.zones // Map<string, Zone>
-        ctx.authorizations // Map<string, Authorization>
+        ctx.tokens // Map<string, Authorization>
 
         return { msg: 'Hello, world!' }
       }
@@ -214,4 +214,32 @@ class GetCommand extends Command {
     console.log(config)
   }
 }
+```
+
+---
+
+## Example CLI usage
+
+```bash
+# Show a zone and it's widgets
+dashund get zone left
+
+# Show an auth
+dashund get auth trello
+
+# Create a zone
+dashund create zone right
+
+# Create a widget
+dashund create widget trello_activity # --zone=left --type=TrelloActivity
+Pick a zone:
+* left
+  right
+Pick a type:
+  TrelloList
+* TrelloActivity
+  SlackMessages
+  Darksky
+
+# Create an token
 ```

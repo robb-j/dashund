@@ -9,6 +9,8 @@ parserOptions:
 env:
   node: true
   jest: true
+rules:
+  no-unused-vars: [off]
 extends:
   - standard
   - prettier
