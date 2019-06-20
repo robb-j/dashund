@@ -10,7 +10,6 @@ const makeMockTokenType = () => ({
 
 const correctTokenArgs = {
   path: 'test_dir',
-  identifier: 'new_token',
   type: 'MockToken'
 }
 
@@ -30,7 +29,6 @@ describe('#executeCreateToken', () => {
   it('should fail if the token type does not exist', async () => {
     let promise = executeCreateToken(dashund, {
       path: 'test_dir',
-      identifier: 'new_token',
       type: 'InvalidToken'
     })
 
@@ -38,13 +36,9 @@ describe('#executeCreateToken', () => {
   })
 
   it('should fail if the token already exists', async () => {
-    config.tokens.set('existing_token', { some: 'value' })
+    config.tokens.set('MockToken', { some: 'value' })
 
-    let promise = executeCreateToken(dashund, {
-      path: 'test_dir',
-      identifier: 'existing_token',
-      type: 'MockToken'
-    })
+    let promise = executeCreateToken(dashund, correctTokenArgs)
 
     await expect(promise).rejects.toThrow()
   })
@@ -55,11 +49,10 @@ describe('#executeCreateToken', () => {
     expect(MockToken.createFromCLI).toHaveBeenCalled()
   })
 
-  it('should store the token', async () => {
+  it('should store the token under its type', async () => {
     await executeCreateToken(dashund, correctTokenArgs)
 
-    expect(config.tokens.get('new_token')).toEqual({
-      id: 'new_token',
+    expect(config.tokens.get('MockToken')).toEqual({
       type: 'MockToken',
       configuredFromCLI: true
     })

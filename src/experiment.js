@@ -1,11 +1,20 @@
 const { Dashund } = require('./Dashund')
 const prompts = require('prompts')
 
+const TestToken = {
+  create: config => config,
+  async createFromCLI() {
+    return { token: 'some_top_secret_value' }
+  },
+  validate: config => typeof config.token === 'string'
+}
+
 const TestWidget = {
+  requiredTokens: ['TestToken'],
   create(config) {
     return config
   },
-  async configureFromCli() {
+  async createFromCLI() {
     const { title } = await prompts({
       type: 'text',
       name: 'title',
@@ -16,14 +25,9 @@ const TestWidget = {
 
     return { title }
   },
-  validateConfig(config) {}
+  validate: config => typeof config.title === 'string'
 }
 
-let dash = new Dashund(
-  {
-    test: TestWidget
-  },
-  {}
-)
+let dash = new Dashund({ TestWidget }, { TestToken })
 
 dash.runCLI()

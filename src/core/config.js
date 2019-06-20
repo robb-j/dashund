@@ -30,11 +30,8 @@ class Config {
         config.parseZones(Yaml.parse(widgetData))
       }
 
-      if (paths.includes('authorizations.json')) {
-        const authData = fs.readFileSync(
-          join(configDir, 'authorizations.json'),
-          'utf8'
-        )
+      if (paths.includes('tokens.json')) {
+        const authData = fs.readFileSync(join(configDir, 'tokens.json'), 'utf8')
         config.parseToken(JSON.parse(authData))
       }
     } catch (error) {
@@ -48,14 +45,13 @@ class Config {
     for (let [zone, widgets] of Object.entries(data)) {
       if (!Array.isArray(widgets)) throw new Error(`${zone} is not an array`)
 
-      this.zones.set(zone, {
-        title: zone,
-        widgets: widgets.map(widget => {
-          const type = this.widgetTypes.get(widget.type)
-          if (!type) throw new Error(`Invalid widget ${widget.type}`)
-          return type.create(widget)
-        })
+      let parsedWidgets = widgets.map(widget => {
+        const type = this.widgetTypes.get(widget.type)
+        if (!type) throw new Error(`Invalid widget ${widget.type}`)
+        return type.create(widget)
       })
+
+      this.zones.set(zone, parsedWidgets)
     }
   }
 
@@ -78,19 +74,20 @@ class Config {
 
     let widgetsData = {}
     this.zones.forEach((widgets, zoneName) => {
+      console.log(widgets)
       widgetsData[zoneName] = widgets
     })
 
     let tokensData = {}
     this.tokens.forEach((token, tokenName) => {
-      widgetsData[tokenName] = token
+      tokensData[tokenName] = token
     })
 
     // Save widgets.yml
     fs.writeFileSync(join(path, 'widgets.yml'), Yaml.stringify(widgetsData))
 
     // Save tokens.json
-    fs.writeFileSync(join(path, 'tokens.json'), Yaml.stringify(tokensData))
+    fs.writeFileSync(join(path, 'tokens.json'), JSON.stringify(tokensData))
   }
 }
 

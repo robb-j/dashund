@@ -1,24 +1,26 @@
 const Yargs = require('yargs')
+const { Dashund } = require('../../dashund')
+const { catchAndLog } = require('../../utils')
 
+/** @param {Yargs} cli */
 function createTokenCommand(cli, dashund) {
   cli.command(
-    'token <identifier> <type>',
+    'token <type>',
     'Show a dashund token',
     yargs => yargs,
-    args => {
-      console.log('create_token')
-    }
+    catchAndLog(args => executeCreateToken(dashund, args))
   )
 }
 
+/** @param {Dashund} dashund */
 async function executeCreateToken(dashund, args) {
-  const { path, identifier, type } = args
+  const { path, type } = args
 
   let config = dashund.loadConfig(path)
 
   // Fail if the token already exists
-  if (config.tokens.has(identifier)) {
-    throw new Error(`token '${identifier}' already exists`)
+  if (config.tokens.has(type)) {
+    throw new Error(`token '${type}' already exists`)
   }
 
   // Fail for invalid token types
@@ -31,8 +33,7 @@ async function executeCreateToken(dashund, args) {
   let token = await TokenType.createFromCLI()
 
   // Store the token
-  config.tokens.set(identifier, {
-    id: identifier,
+  config.tokens.set(type, {
     type: type,
     ...token
   })

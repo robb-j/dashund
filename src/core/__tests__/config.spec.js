@@ -32,16 +32,13 @@ describe('Config', () => {
       expect(fs.readFileSync).toBeCalledWith('.dashund/widgets.yml', 'utf8')
     })
 
-    it('should load authorizations.json', () => {
-      fs.readdirSync.mockReturnValue(['authorizations.json'])
+    it('should load tokens.json', () => {
+      fs.readdirSync.mockReturnValue(['tokens.json'])
       fs.readFileSync.mockReturnValue('{}')
 
       Config.from('.', {}, {})
 
-      expect(fs.readFileSync).toBeCalledWith(
-        '.dashund/authorizations.json',
-        'utf8'
-      )
+      expect(fs.readFileSync).toBeCalledWith('.dashund/tokens.json', 'utf8')
     })
   })
 
