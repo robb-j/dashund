@@ -6,14 +6,14 @@ const { createWidgetCommand } = require('./create/widget')
 const { createTokenCommand } = require('./create/token')
 
 /** @param cli {Yargs} */
-function createCommand(cli, config, dashund, cwd) {
+function createCommand(cli, dashund) {
   cli.command(
     'create <zone|widget|token>',
     'Create a dashund resource',
     yargs => {
-      createZoneCommand(yargs, config, dashund, cwd)
-      createWidgetCommand(yargs, config, dashund, cwd)
-      createTokenCommand(yargs, config, dashund, cwd)
+      createZoneCommand(yargs, dashund)
+      createWidgetCommand(yargs, dashund)
+      createTokenCommand(yargs, dashund)
     }
   )
 }

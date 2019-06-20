@@ -1,6 +1,6 @@
 const Yargs = require('yargs')
 
-function createWidgetCommand(cli, config, dashund, cwd) {
+function createWidgetCommand(cli, dashund) {
   cli.command(
     'widget',
     'Show a dashund widget',

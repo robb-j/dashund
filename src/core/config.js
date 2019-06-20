@@ -1,5 +1,5 @@
 const { join } = require('path')
-const { readdirSync, readFileSync } = require('fs')
+const fs = require('fs')
 const Yaml = require('yaml')
 
 class Config {
@@ -16,19 +16,22 @@ class Config {
 
     let paths
     try {
-      paths = readdirSync(configDir)
+      paths = fs.readdirSync(configDir)
     } catch (error) {
       return config
     }
 
     try {
       if (paths.includes('widgets.yml')) {
-        const widgetData = readFileSync(join(configDir, 'widgets.yml'), 'utf8')
+        const widgetData = fs.readFileSync(
+          join(configDir, 'widgets.yml'),
+          'utf8'
+        )
         config.parseZones(Yaml.parse(widgetData))
       }
 
       if (paths.includes('authorizations.json')) {
-        const authData = readFileSync(
+        const authData = fs.readFileSync(
           join(configDir, 'authorizations.json'),
           'utf8'
         )
@@ -60,6 +63,34 @@ class Config {
     for (let [type, config] of Object.entries(data)) {
       this.tokens.set(type, { type, ...config })
     }
+  }
+
+  save(dir) {
+    let path = join(dir, '.dashund')
+
+    // First ensure the dashund folder exists
+    try {
+      fs.statSync(path)
+    } catch (error) {
+      // Make the folder
+      fs.mkdirSync(path, { recursive: true })
+    }
+
+    let widgetsData = {}
+    this.zones.forEach((widgets, zoneName) => {
+      widgetsData[zoneName] = widgets
+    })
+
+    let tokensData = {}
+    this.tokens.forEach((token, tokenName) => {
+      widgetsData[tokenName] = token
+    })
+
+    // Save widgets.yml
+    fs.writeFileSync(join(path, 'widgets.yml'), Yaml.stringify(widgetsData))
+
+    // Save tokens.json
+    fs.writeFileSync(join(path, 'tokens.json'), Yaml.stringify(tokensData))
   }
 }
 

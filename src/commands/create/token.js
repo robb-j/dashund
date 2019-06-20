@@ -1,6 +1,6 @@
 const Yargs = require('yargs')
 
-function createTokenCommand(cli, config, dashund, cwd) {
+function createTokenCommand(cli, dashund) {
   cli.command(
     'token',
     'Show a dashund token',

@@ -5,9 +5,9 @@ const { Config } = require('./core/config')
 const { defaultCommands } = require('./commands')
 
 class Dashund {
-  constructor(widgets = {}, authorizations = {}) {
-    this.widgets = new Map(Object.entries(widgets))
-    this.authz = new Map(Object.entries(authorizations))
+  constructor(widgets = {}, tokens = {}) {
+    this.widgetTypes = new Map(Object.entries(widgets))
+    this.tokenTypes = new Map(Object.entries(tokens))
     this.commands = defaultCommands
   }
 
@@ -15,10 +15,14 @@ class Dashund {
     let cli = yargs(args)
       .help()
       .alias('help', 'h')
+      .option('path', {
+        describe: 'The path to your .dashund folder',
+        default: process.cwd()
+      })
 
-    let config = Config.from(cwd, this.widgets, this.authz)
+    // let config = Config.from(cwd, this.widgetTypes, this.authz)
 
-    for (let command of this.commands) command(cli, config, this, cwd)
+    for (let command of this.commands) command(cli, this)
 
     let argv = cli.parse()
 
@@ -26,6 +30,10 @@ class Dashund {
       console.log('Unknown command')
       process.exit(1)
     }
+  }
+
+  loadConfig(path) {
+    return Config.from(path, this.widgetTypes, this.tokenTypes)
   }
 }
 

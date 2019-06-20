@@ -84,4 +84,41 @@ describe('Config', () => {
       expect(secret).toEqual('password')
     })
   })
+
+  describe('#save', () => {
+    it('should create the .dashund folder', () => {
+      let config = new Config()
+
+      // Pretend the directory doesn't exist
+      fs.statSync.mockImplementation(() => {
+        throw new Error()
+      })
+
+      config.save('test_path')
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith('test_path/.dashund', {
+        recursive: true
+      })
+    })
+
+    it('should save widgets', () => {
+      let config = new Config()
+      config.save('test_path')
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        'test_path/.dashund/widgets.yml',
+        expect.stringMatching(/\{\}/)
+      )
+    })
+
+    it('should save tokens', () => {
+      let config = new Config()
+      config.save('test_path')
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        'test_path/.dashund/tokens.json',
+        expect.stringMatching(/\{\}/)
+      )
+    })
+  })
 })
