@@ -1,6 +1,7 @@
 const { Dashund } = require('./Dashund')
-const { runTemporaryServer } = require('./utils')
 const prompts = require('prompts')
+const express = require('express')
+const { createServer } = require('http')
 
 const TestToken = {
   create: config => config,
@@ -29,6 +30,20 @@ const TestWidget = {
   validate: config => typeof config.title === 'string'
 }
 
-let dash = new Dashund({ TestWidget }, { TestToken })
+let dash = new Dashund({ TestWidget }, { TestToken }, [
+  {
+    name: 'test/endpoint',
+    interval: '10s',
+    handler: async ctx => {
+      console.log('test/endpoint')
+      return { msg: 'Hello, World!' }
+    }
+  }
+])
 
-dash.runCLI()
+// dash.runCLI()
+
+;(async () => {
+  await dash.runServer(3000)
+  console.log('Listening on :3000')
+})()

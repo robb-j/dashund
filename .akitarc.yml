@@ -1,0 +1,9 @@
+url: ws://localhost:3000
+
+messages:
+  sub:
+    type: sub
+    target: test/endpoint
+  unsub:
+    type: unsub
+    target: test/endpoint

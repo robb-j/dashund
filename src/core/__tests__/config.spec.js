@@ -51,11 +51,7 @@ describe('Config', () => {
       let config = new Config(fakeWidgetTypes, fakeTokenTypes)
       config.parseZones(input)
 
-      let zone = config.zones.get('zone_a')
-      expect(zone).toBeDefined()
-
-      const { title, widgets } = zone
-      expect(title).toEqual('zone_a')
+      let widgets = config.zones.get('zone_a')
       expect(widgets).toContainEqual({
         type: 'some_widget',
         configured: true,
