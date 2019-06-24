@@ -1,7 +1,5 @@
-const { Dashund } = require('./Dashund')
+const { Dashund } = require('../src')
 const prompts = require('prompts')
-const express = require('express')
-const { createServer } = require('http')
 
 const TestToken = {
   create: config => config,
@@ -30,7 +28,7 @@ const TestWidget = {
   validate: config => typeof config.title === 'string'
 }
 
-let dash = new Dashund({ TestWidget }, { TestToken }, [
+let dashund = new Dashund({ TestWidget }, { TestToken }, [
   {
     name: 'test/endpoint',
     interval: '10s',
@@ -41,9 +39,4 @@ let dash = new Dashund({ TestWidget }, { TestToken }, [
   }
 ])
 
-// dash.runCLI()
-
-;(async () => {
-  await dash.runServer(3000)
-  console.log('Listening on :3000')
-})()
+module.exports = { dashund }
