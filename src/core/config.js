@@ -3,16 +3,16 @@ const fs = require('fs')
 const Yaml = require('yaml')
 
 class Config {
-  constructor(widgetTypes = new Map(), tokenTypes = new Map()) {
+  constructor(widgetFactories = new Map(), tokenFactories = new Map()) {
     this.zones = new Map()
     this.tokens = new Map()
-    this.widgetTypes = widgetTypes
-    this.tokenTypes = tokenTypes
+    this.widgetFactories = widgetFactories
+    this.tokenFactories = tokenFactories
   }
 
-  static from(path = '.', widgetTypes, tokenTypes) {
+  static from(path = '.', widgetFactories, tokenFactories) {
     const configDir = join(path, '.dashund')
-    const config = new Config(widgetTypes, tokenTypes)
+    const config = new Config(widgetFactories, tokenFactories)
 
     let paths
     try {
@@ -46,9 +46,9 @@ class Config {
       if (!Array.isArray(widgets)) throw new Error(`${zone} is not an array`)
 
       let parsedWidgets = widgets.map(widget => {
-        const type = this.widgetTypes.get(widget.type)
-        if (!type) throw new Error(`Invalid widget ${widget.type}`)
-        return type.create(widget)
+        const factory = this.widgetFactories.get(widget.type)
+        if (!factory) throw new Error(`Invalid widget ${widget.type}`)
+        return factory.create(widget)
       })
 
       this.zones.set(zone, parsedWidgets)

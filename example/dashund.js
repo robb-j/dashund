@@ -10,7 +10,7 @@ const TestToken = {
 }
 
 const TestWidget = {
-  requiredTokens: ['TestToken'],
+  requiredEndpoints: ['test/endpoint'],
   create(config) {
     return config
   },
@@ -31,9 +31,10 @@ const TestWidget = {
 let dashund = new Dashund({ TestWidget }, { TestToken }, [
   {
     name: 'test/endpoint',
+    requiredTokens: ['TestToken'],
     interval: '10s',
     handler: async ctx => {
-      console.log('test/endpoint')
+      // console.log('test/endpoint')
       return { msg: 'Hello, World!' }
     }
   }

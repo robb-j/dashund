@@ -4,44 +4,25 @@ const express = require('express')
 const WebSocket = require('ws')
 const { createServer } = require('http')
 
-const { Config } = require('./core/config')
-
+const { Config, Endpoint } = require('./core')
+const { sharedLogger } = require('./utils')
 const { defaultCommands } = require('./commands')
-
-const pingInterval = ms('1s')
 
 class Dashund {
   /** Create a new dashund instance */
   constructor(widgets = {}, tokens = {}, endpoints = []) {
-    this.widgetTypes = new Map(Object.entries(widgets))
-    this.tokenTypes = new Map(Object.entries(tokens))
-    this.endpoints = endpoints
+    this.widgetFactories = new Map(Object.entries(widgets))
+    this.tokenFactories = new Map(Object.entries(tokens))
+    this.endpoints = endpoints.map(conf => new Endpoint(conf))
     this.commands = defaultCommands
     this.timers = []
     this.endpointData = new Map()
     this.subscriptions = new Map()
-
-    // Validate each endpoint
-    for (let i in endpoints) {
-      let endpoint = endpoints[i]
-      let fail = msg => {
-        throw new Error(`endpoint[${i}]: ${msg}`)
-      }
-
-      if (typeof endpoint.name !== 'string') fail('invalid name')
-      if (typeof endpoint.interval !== 'string') fail('invalid interval')
-      if (typeof endpoint.handler !== 'function') fail('invalid handler')
-
-      try {
-        ms(endpoint.interval)
-      } catch (error) {
-        fail('invalid handler')
-      }
-    }
   }
 
   /** Run the CLI */
   async runCLI(args = process.argv.slice(2), cwd = process.cwd()) {
+    // Setup the cli instance using yargs
     let cli = yargs(args)
       .help()
       .alias('help', 'h')
@@ -50,12 +31,15 @@ class Dashund {
         default: process.cwd()
       })
 
+    // Allow commands to register themselves
     for (let command of this.commands) command(cli, this)
 
+    // Run the CLI
     let argv = cli.parse()
 
+    // Fail if there was no command
     if (argv._[0] === undefined) {
-      console.log('Unknown command')
+      sharedLogger.error('Unknown command')
       process.exit(1)
     }
   }
@@ -84,7 +68,7 @@ class Dashund {
 
   /** Load dashund config with the current widget/token types */
   loadConfig(path) {
-    return Config.from(path, this.widgetTypes, this.tokenTypes)
+    return Config.from(path, this.widgetFactories, this.tokenFactories)
   }
 
   /** @param {Config} config */
@@ -113,7 +97,7 @@ class Dashund {
       res.send({ endpoints: payload })
     })
 
-    // Add a route to show subscriptions
+    // EXPERIMENTAL: Add a route to show subscriptions
     router.get('/subs', (req, res) => {
       let payload = {}
 
@@ -124,16 +108,20 @@ class Dashund {
       res.send({ subscriptions: payload })
     })
 
-    // A lambda to clean format endpoint routes
+    // A lambda to format endpoint names into routes
     // e.g. /some/endpoint/ => /some/endpoint
     const sanitizeName = name =>
-      '/' + name.replace(/^\//, '').replace(/\/$/, '')
+      '/' +
+      name
+        .replace(/^\//, '')
+        .replace(/\/$/, '')
+        .replace(/\s+/, '')
 
     // Register endpoint routes
     for (let endpoint of this.endpoints) {
       let { name, interval, handler } = endpoint
 
-      router.get(sanitizeName(name), async (req, res, next) => {
+      router.get(sanitizeName(name), async (req, res) => {
         res.send({ data: this.endpointData.get(endpoint.name) })
       })
     }
@@ -145,68 +133,11 @@ class Dashund {
   attachSocketServer(config, httpServer) {
     let wss = new WebSocket.Server({ server: httpServer })
 
-    //
-    // Listen for new WebSocket connections
-    //
+    // Register events when new sockets connect
     wss.on('connection', ws => {
-      // Mark the socket as active
-      ws.isAlive = true
-
-      // For each new connection, listen for messages from it
-      ws.on('message', data => {
-        try {
-          // Deconstruct the JSON payload
-          let { type, ...params } = JSON.parse(data)
-
-          // Handle subscription messages
-          if (type === 'sub') {
-            let subs = this.subscriptions.get(params.target) || []
-            subs.push(ws)
-            this.subscriptions.set(params.target, subs)
-          }
-
-          // Handle unsubscribe messages
-          if (type === 'unsub') {
-            let subs = this.subscriptions.get(params.target) || []
-
-            this.subscriptions.set(
-              params.target,
-              subs.filter(sub => sub !== ws)
-            )
-          }
-        } catch (error) {
-          console.log(error)
-        }
-      })
-
-      ws.on('pong', () => {
-        ws.isAlive = true
-      })
+      ws.on('message', data => this.handleSocket(ws, data))
+      ws.on('close', () => this.clearSocket(ws))
     })
-
-    //
-    // Setup a ping-pong to ensure sockets are active
-    //
-    // setInterval(() => {
-    //   let count = 0
-    //
-    //   for (let ws of wss.clients) {
-    //     console.log(ws.isAlive)
-    //     if (ws.isAlive === false) {
-    //       console.log('killed')
-    //       ws.terminate()
-    //       this.clearSocket(ws)
-    //       count++
-    //     } else {
-    //       ws.isAlive = false
-    //       ws.ping()
-    //     }
-    //   }
-    //
-    //   if (count > 0) {
-    //     console.log(`Purged ${count} sockets`)
-    //   }
-    // }, pingInterval)
 
     return wss
   }
@@ -253,16 +184,42 @@ class Dashund {
         )
       }
     } catch (error) {
-      console.log(`Error: ${endpoint.name}`)
-      console.log(error)
+      sharedLogger.debug(error)
     }
   }
 
+  /** Handle a data payload from a socket */
+  handleSocket(socket, data) {
+    try {
+      // Deconstruct the JSON payload
+      let { type, ...params } = JSON.parse(data)
+
+      // Handle subscription messages
+      if (type === 'sub') {
+        let subs = this.subscriptions.get(params.target) || []
+        subs.push(socket)
+        this.subscriptions.set(params.target, subs)
+      }
+
+      // Handle unsubscribe messages
+      if (type === 'unsub') {
+        let subs = this.subscriptions.get(params.target) || []
+
+        this.subscriptions.set(
+          params.target,
+          subs.filter(sub => sub !== socket)
+        )
+      }
+    } catch (error) {
+      sharedLogger.debug(error)
+    }
+  }
+
+  /** Remove subscriptions for a socket */
   clearSocket(deadSocket) {
     this.subscriptions.forEach((subs, name) => {
-      this.subscriptions.set(
-        this.subscriptions.get(name).filter(ws => ws !== deadSocket)
-      )
+      let filteredSubs = subs.filter(ws => ws !== deadSocket)
+      this.subscriptions.set(name, filteredSubs)
     })
   }
 }

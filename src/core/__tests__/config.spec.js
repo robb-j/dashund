@@ -13,13 +13,13 @@ const makeMockConfigurable = () => {
 }
 
 describe('Config', () => {
-  let fakeWidgetTypes, fakeTokenTypes
+  let widgetFactories, tokenFactories
 
   beforeEach(() => {
-    fakeWidgetTypes = new Map()
-    fakeTokenTypes = new Map()
+    widgetFactories = new Map()
+    tokenFactories = new Map()
 
-    fakeWidgetTypes.set('some_widget', makeMockConfigurable())
+    widgetFactories.set('some_widget', makeMockConfigurable())
   })
 
   describe('.from', () => {
@@ -48,7 +48,7 @@ describe('Config', () => {
         zone_a: [{ type: 'some_widget', name: 'geoff' }]
       }
 
-      let config = new Config(fakeWidgetTypes, fakeTokenTypes)
+      let config = new Config(widgetFactories, tokenFactories)
       config.parseZones(input)
 
       let widgets = config.zones.get('zone_a')
@@ -66,7 +66,7 @@ describe('Config', () => {
         some_service: { secret: 'password' }
       }
 
-      let config = new Config(fakeWidgetTypes, fakeTokenTypes)
+      let config = new Config(widgetFactories, tokenFactories)
       config.parseToken(input)
 
       let service = config.tokens.get('some_service')

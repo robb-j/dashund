@@ -3,7 +3,7 @@ const { Dashund } = require('../../../dashund')
 const { Config } = require('../../../core')
 
 const makeMockWidget = () => ({
-  requiredTokens: [],
+  requiredEndpoints: ['test/endpoint'],
   create: jest.fn(initial => initial),
   createFromCLI: jest.fn(() => ({ configuredFromCLI: true })),
   validate: jest.fn(() => true)
@@ -16,13 +16,19 @@ const correctWidgetArgs = {
   type: 'MockWidget'
 }
 
+const makeMockEndpoint = () => ({
+  name: 'test/endpoint',
+  interval: '10m',
+  handler: () => 'Hey'
+})
+
 describe('#executeCreateWidget', () => {
   let dashund, config, MockWidget
   beforeEach(() => {
     MockWidget = makeMockWidget()
-    dashund = new Dashund({ MockWidget }, {})
+    dashund = new Dashund({ MockWidget }, {}, [makeMockEndpoint()])
 
-    config = new Config(dashund.widgetTypes, dashund.tokenTypes)
+    config = new Config(dashund.widgetFactories, dashund.tokenFactories)
     config.save = jest.fn()
     config.zones.set('zone_a', [])
 
@@ -51,8 +57,8 @@ describe('#executeCreateWidget', () => {
     await expect(promise).rejects.toThrow()
   })
 
-  it('should fail for missing tokens', async () => {
-    MockWidget.requiredTokens = ['MockToken']
+  it('should fail for missing endpoints', async () => {
+    MockWidget.requiredEndpoints = ['test/anotherEndpoint']
 
     let promise = executeCreateWidget(dashund, correctWidgetArgs)
 

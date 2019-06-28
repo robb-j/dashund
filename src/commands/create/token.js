@@ -24,13 +24,13 @@ async function executeCreateToken(dashund, args) {
   }
 
   // Fail for invalid token types
-  if (!dashund.tokenTypes.has(type)) {
+  if (!dashund.tokenFactories.has(type)) {
     throw new Error(`Invalid Token type '${type}'`)
   }
 
   // Use the type to create a token
-  let TokenType = dashund.tokenTypes.get(type)
-  let token = await TokenType.createFromCLI()
+  let factory = dashund.tokenFactories.get(type)
+  let token = await factory.createFromCLI()
 
   // Store the token
   config.tokens.set(type, {

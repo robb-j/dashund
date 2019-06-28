@@ -6,7 +6,7 @@ describe('#executeCreateZone', () => {
   let dashund, config
   beforeEach(() => {
     dashund = new Dashund({}, {})
-    config = new Config(dashund.widgetTypes, dashund.tokenTypes)
+    config = new Config(dashund.widgetFactories, dashund.tokenFactories)
     config.save = jest.fn()
 
     jest.spyOn(Config, 'from').mockReturnValue(config)
