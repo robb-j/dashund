@@ -173,6 +173,14 @@ describe('Dashund', () => {
       })
       expect(sub.send).toHaveBeenCalledWith(expected)
     })
+
+    it('should reauth expired tokens that are required', () => {
+      // TODO: ...
+    })
+
+    it('should reauth if a ReauthError is thrown', () => {
+      // TODO ...
+    })
   })
 
   describe('#clearSocket', () => {
