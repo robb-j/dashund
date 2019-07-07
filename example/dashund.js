@@ -5,8 +5,7 @@ const TestToken = {
   create: config => config,
   async createFromCLI() {
     return { token: 'some_top_secret_value' }
-  },
-  validate: config => typeof config.token === 'string'
+  }
 }
 
 const TestWidget = {
@@ -24,8 +23,7 @@ const TestWidget = {
     if (!title) throw new Error('Cancelled')
 
     return { title }
-  },
-  validate: config => typeof config.title === 'string'
+  }
 }
 
 let dashund = new Dashund({ TestWidget }, { TestToken }, [

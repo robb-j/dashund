@@ -5,12 +5,16 @@ const WebSocket = require('ws')
 const { createServer } = require('http')
 
 const { Config, Endpoint } = require('./core')
-const { sharedLogger } = require('./utils')
+const {
+  sharedLogger,
+  MissingTokenError,
+  ExpiredTokenError
+} = require('./utils')
 const { defaultCommands } = require('./commands')
 
 class Dashund {
   /** Create a new dashund instance */
-  constructor(widgets = {}, tokens = {}, endpoints = []) {
+  constructor(widgets = {}, tokens = {}, endpoints = [], path = process.cwd()) {
     this.widgetFactories = new Map(Object.entries(widgets))
     this.tokenFactories = new Map(Object.entries(tokens))
     this.endpoints = endpoints.map(conf => new Endpoint(conf))
@@ -18,6 +22,7 @@ class Dashund {
     this.timers = []
     this.endpointData = new Map()
     this.subscriptions = new Map()
+    this.configPath = path
   }
 
   /** Run the CLI */
@@ -45,9 +50,9 @@ class Dashund {
   }
 
   /** Run the server */
-  async runServer(port, path = process.cwd()) {
+  async runServer(port) {
     // Fetch config
-    let config = this.loadConfig(path)
+    let config = this.loadConfig(this.configPath)
 
     // Create an express app
     let app = express()
@@ -157,11 +162,25 @@ class Dashund {
       // Initially run the endpoint
       await this.runEndpoint(endpoint, config)
     }
+
+    // Add a timer check for dirty configs and save them
+    setInterval(() => {
+      if (!config.isDirty) return
+      config.save(this.configPath)
+      config.isDirty = false
+    }, 5 * 1000)
   }
 
   /** Execute an endpoint and store the result (catching any errors) */
-  async runEndpoint(endpoint, config) {
+  async runEndpoint(endpoint, config, attemptReauth = true) {
     try {
+      // Ensure required tokens are set and gather them into an array
+      for (let tokenName of endpoint.requiredTokens) {
+        let token = config.tokens.get(tokenName)
+        if (!token) throw new MissingTokenError(tokenName)
+        await this.renewToken(token, config)
+      }
+
       // Fetch data using the handler
       let data = await endpoint.handler({
         zones: config.zones,
@@ -184,7 +203,7 @@ class Dashund {
         )
       }
     } catch (error) {
-      sharedLogger.debug(error)
+      sharedLogger.warn(error)
     }
   }
 
@@ -221,6 +240,27 @@ class Dashund {
       let filteredSubs = subs.filter(ws => ws !== deadSocket)
       this.subscriptions.set(name, filteredSubs)
     })
+  }
+
+  /** Try to renew a token and save changes if it changed */
+  async renewToken(token, config) {
+    let tokenFactory = this.tokenFactories.get(token.type)
+    if (typeof tokenFactory.reauth !== 'function') return
+
+    try {
+      let newToken = await tokenFactory.reauth(token)
+      if (!newToken) return
+
+      config.tokens.set(token.type, {
+        type: token.type,
+        ...newToken
+      })
+
+      config.isDirty = true
+    } catch (error) {
+      sharedLogger.debug(error)
+      throw new ExpiredTokenError(token.type)
+    }
   }
 }
 

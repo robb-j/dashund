@@ -1,9 +1,12 @@
+jest.mock('fs')
+jest.mock('../utils/logger')
+jest.useFakeTimers()
+
 const request = require('supertest')
 const express = require('express')
 const { Dashund } = require('../dashund')
 const { Config, Endpoint } = require('../core')
-
-jest.useFakeTimers()
+const { MissingTokenError, sharedLogger } = require('../utils')
 
 const mockEndpoint = () => ({
   name: 'test/endpoint',
@@ -11,12 +14,22 @@ const mockEndpoint = () => ({
   handler: jest.fn(() => 'hello_world')
 })
 
+const expiredTokenFactory = () => ({
+  create: config => config,
+  createFromCLI: () => {},
+  reauth: jest.fn(() => ({ secret: 'reauthed_secret' }))
+})
+
 describe('Dashund', () => {
-  let dashund, config, endpoint
+  let dashund, config, endpoint, ExpiredToken
 
   beforeEach(() => {
+    ExpiredToken = expiredTokenFactory()
     config = new Config()
-    config.tokens.set('TestToken', { secret: 'some_secret_value' })
+    config.tokens.set('TestToken', {
+      type: 'TestToken',
+      secret: 'some_secret_value'
+    })
     config.zones.set('left', [
       { type: 'WidgetA', name: 'geoff' },
       { type: 'WidgetB', name: 'tim' }
@@ -24,7 +37,9 @@ describe('Dashund', () => {
 
     endpoint = mockEndpoint()
 
-    dashund = new Dashund({}, {}, [endpoint])
+    dashund = new Dashund({}, { ExpiredToken }, [endpoint])
+
+    jest.clearAllTimers()
   })
 
   describe('#createAPIMiddleware', () => {
@@ -141,6 +156,18 @@ describe('Dashund', () => {
 
       expect(endpoint.handler).toHaveBeenCalled()
     })
+
+    it('should save dirty configs', async () => {
+      jest.spyOn(config, 'save')
+      config.isDirty = true
+
+      await dashund.setupTimers(config)
+
+      jest.advanceTimersByTime(10 * 1000)
+
+      expect(config.isDirty).toEqual(false)
+      expect(config.save).toBeCalled()
+    })
   })
 
   describe('#runEndpoint', () => {
@@ -174,12 +201,66 @@ describe('Dashund', () => {
       expect(sub.send).toHaveBeenCalledWith(expected)
     })
 
-    it('should reauth expired tokens that are required', () => {
-      // TODO: ...
+    it('should throw if required tokens are missing', async () => {
+      endpoint.requiredTokens = ['ExpiredToken']
+
+      await dashund.runEndpoint(new Endpoint(endpoint), config)
+
+      expect(sharedLogger.warn).toBeCalledWith(expect.any(MissingTokenError))
+    })
+
+    it('should reauth invalid tokens', async () => {
+      endpoint.requiredTokens = ['ExpiredToken']
+      config.tokens.set('ExpiredToken', {
+        type: 'ExpiredToken',
+        secret: 'some_secret_value'
+      })
+
+      await dashund.runEndpoint(new Endpoint(endpoint), config)
+
+      expect(ExpiredToken.reauth).toBeCalled()
+
+      let token = config.tokens.get('ExpiredToken')
+      expect(token.secret).toEqual('reauthed_secret')
     })
 
     it('should reauth if a ReauthError is thrown', () => {
       // TODO ...
+    })
+  })
+
+  describe('#renewToken', () => {
+    let oldToken
+    beforeEach(() => {
+      oldToken = {
+        type: 'ExpiredToken',
+        secret: 'expired_secret_value'
+      }
+    })
+
+    it('should call TokenFactory.reauth', async () => {
+      config.tokens.set('ExpiredToken', oldToken)
+
+      await dashund.renewToken(oldToken, config)
+
+      expect(ExpiredToken.reauth).toBeCalledWith(oldToken)
+    })
+
+    it('should store the new token', async () => {
+      config.tokens.set('ExpiredToken', oldToken)
+
+      await dashund.renewToken(oldToken, config)
+
+      let token = config.tokens.get('ExpiredToken')
+      expect(token.secret).toEqual('reauthed_secret')
+    })
+
+    it('should mark the config as dirty', async () => {
+      config.tokens.set('ExpiredToken', oldToken)
+
+      await dashund.renewToken(oldToken, config)
+
+      expect(config.isDirty).toEqual(true)
     })
   })
 

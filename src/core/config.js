@@ -8,6 +8,7 @@ class Config {
     this.tokens = new Map()
     this.widgetFactories = widgetFactories
     this.tokenFactories = tokenFactories
+    this.isDirty = false
   }
 
   static from(path = '.', widgetFactories, tokenFactories) {

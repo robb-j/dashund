@@ -8,7 +8,6 @@ const makeMockConfigurable = () => {
   let c = new Configurable()
   c.create = jest.fn(config => ({ ...config, configured: true }))
   c.configureFromCLI = jest.fn()
-  c.validateConfig = jest.fn()
   return c
 }
 
