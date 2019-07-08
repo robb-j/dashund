@@ -46,13 +46,13 @@ class Config {
     for (let [zone, widgets] of Object.entries(data)) {
       if (!Array.isArray(widgets)) throw new Error(`${zone} is not an array`)
 
-      let parsedWidgets = widgets.map(widget => {
-        const factory = this.widgetFactories.get(widget.type)
-        if (!factory) throw new Error(`Invalid widget ${widget.type}`)
-        return factory.create(widget)
-      })
+      for (let i in widgets) {
+        if (typeof widgets[i] !== 'object') {
+          throw new Error(`${zone}.widgets[${i}] is not an object`)
+        }
+      }
 
-      this.zones.set(zone, parsedWidgets)
+      this.zones.set(zone, widgets)
     }
   }
 

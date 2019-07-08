@@ -6,7 +6,7 @@ const { Configurable } = require('../configurable')
 
 const makeMockConfigurable = () => {
   let c = new Configurable()
-  c.create = jest.fn(config => ({ ...config, configured: true }))
+  c.create = jest.fn(config => ({ ...config }))
   c.configureFromCLI = jest.fn()
   return c
 }
@@ -51,11 +51,8 @@ describe('Config', () => {
       config.parseZones(input)
 
       let widgets = config.zones.get('zone_a')
-      expect(widgets).toContainEqual({
-        type: 'some_widget',
-        configured: true,
-        name: 'geoff'
-      })
+
+      expect(widgets).toHaveLength(1)
     })
   })
 

@@ -2,7 +2,6 @@ const { Dashund } = require('../src')
 const prompts = require('prompts')
 
 const TestToken = {
-  create: config => config,
   async createFromCLI() {
     return { token: 'some_top_secret_value' }
   }
@@ -10,9 +9,6 @@ const TestToken = {
 
 const TestWidget = {
   requiredEndpoints: ['test/endpoint'],
-  create(config) {
-    return config
-  },
   async createFromCLI() {
     const { title } = await prompts({
       type: 'text',
