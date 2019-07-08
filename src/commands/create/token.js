@@ -7,7 +7,11 @@ function createTokenCommand(cli, dashund) {
   cli.command(
     'token <type>',
     'Show a dashund token',
-    yargs => yargs,
+    yargs =>
+      yargs.option('override', {
+        type: 'boolean',
+        describe: 'Override existing tokens'
+      }),
     catchAndLog(args => executeCreateToken(dashund, args))
   )
 }
@@ -19,8 +23,8 @@ async function executeCreateToken(dashund, args) {
   let config = dashund.loadConfig(path)
 
   // Fail if the token already exists
-  if (config.tokens.has(type)) {
-    throw new Error(`token '${type}' already exists`)
+  if (config.tokens.has(type) && !args.override) {
+    throw new Error(`token '${type}' already exists (try --override)`)
   }
 
   // Fail for invalid token types
