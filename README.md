@@ -1,245 +1,185 @@
-# Dachshund / dashund
+# Dashund / dachshund
 
 Tools for making dashboards as simple and quick as possible
 
-> This document is currently an exploration into what this project could be.
-> It scopes our the ideas and interfaces it could implement.
+> This document is an exploration into what the project could be
+> It aims to scope out the initial features.
 
 ## Project components
 
 - A CLI for managing widgets within zones
-- A CLI for authenticating third party services and storing tokens
-- An API for reading widgets and tokens
-- An API for scaffolding an http API with socket based subscriptions
-- UI components for rendering widgets
-- UI tools for subscribing to sockets and re-rendering
-
-In this document:
-
-- Authentication (authn) is the process of proving who you are.
-- Authorization (authz) is the proof you received when authentication.
+- A CLI for authenticating with 3rd party services and storing access tokens
+- An API for reading in widgets, zones and tokens
+- An API for scaffolding an http JSON RESTful API
+- An API for scaffolding a socket based subscription to endpoints
+- UI utilities to subscribe to the sockets (WIP)
+- UI components for rendering widgets in zones (WIP)
 
 ## How it should work
 
-There will be a CLI for configuring widgets in groups (zones) and authenticating with third party services.
-There will be an API library for reading in widget/token files and scaffolding an api with web sockets.
-There will be a UI library for rendering widgets which subscribe to the api's web sockets.
+> Dashund **is not** an all in one solution, its more of a framework for scaffolding your own solution.
+> It aims at reducing the code you write as much as possible, but not entirely.
 
-## CLI Usage
+A CLI is used to configure zones of the dashboard and put widgets in them.
+The CLI is also authenticates with 3rd party services and stores and refreshes access tokens.
+
+It creates a file structure like this:
 
 ```
-Usage: dashund [options] <command>
-
-Options:
-  -f --file  Specify where your .dashund folder is
-
-Commands:
-  get <widget|auth|zone> [identifier]     Get an existing resource
-  create <widget|auth|zone> <identifier>  Create a new resource
-  delete <widget|auth|zone> <identifier>  Delete a resource
-
-  refreshAuth                             Refresh any expired tokens
-  move <identifier> <destination> <pos>   Move a widget to a new zone/position
-```
-
-Which should create a filestructure like:
-
-```bash
-.dashund/
+.dashund
   widgets.yml
   tokens.json
 ```
 
-## The API
+There is then an API to read in the configuration generated from the CLI
+and allow you to scaffold an API using those tokens with web socket subscriptions.
 
-The base types
+There is finally UI tools to subscribe to those endpoints
+and utilities to render widgets within their zones.
 
-```ts
-interface Component<T = any> {
-  id: string
-  config: T
+### The CLI
 
-  async configureFromCLI() { }
-  async validateConfiguration(config: T) { }
-}
+```
+Usage: dashund <command>
 
-class Widget<T> implements Component<T> {
-  tokens = new Array<string>()
+Commands:
+  cli.js get                         Get a Dashund resource from the local .dashund folder
+  cli.js create <zone|widget|token>  Create a dashund resource
 
-  constructor(public id: string, public config: T) {}
-}
-class Authorization<T> implements Component<T> {
-  constructor(public id: string, public config: T) {}
-}
+Options:
+  --version   Show version number                                      [boolean]
+  --help, -h  Show help                                                [boolean]
+  --path      The path to your .dashund folder
+
 ```
 
-An example widget
+### The API
 
-```ts
-export type GitHubActiviyConfig = {
-  name: string
-}
-
-export class GitHubActivityWidget implements Widget<GitHubActiviyConfig> {
-  tokens = ['github']
-
-  async configureFromCLI() {
-    const { name } = await prompts([
-      {
-        type: 'string',
-        name: 'name',
-        message: 'What is the name of this component'
-      }
-    ])
-
-    this.config = { name }
-  }
-
-  async validateConfiguration(config) {
-    if (!config.name) throw new Error('Name is required')
-  }
-}
-```
-
-Configure your instance, **dashund.ts**
+First you'll want a token, a factory for authenticating to a 3rd party service,
+e.g. **tokens.js**
 
 ```js
-import { Dashund } from 'dashund'
+const { runTemporaryServer } = require('dashund')
+const axios = require('axios')
 
-import { TrelloToken, MonzoToken, GitLabToken } from './tokens'
-import { TrelloListWidget, MonzoBalanceWidget } from './widgets'
+exports.GitHub = {
+  //
+  // One method for creating the token, with user input
+  // and a temporary server for handling callbacks
+  //
+  async createFromCLI() {
+    console.log('Visit http://localhost:3000')
 
-export const dashund = new Dashund({
-  tokens: { TrelloToken, MonzoToken, GitLabToken },
-  widgets: { TrelloListWidget, MonzoBalanceWidget }
-})
+    let token = null
+    await runTemporaryServer(3000, (app, close) => {
+      app.get('/', (req, res) => res.redirect('...'))
+      app.post('/callback', (req, res) => {
+        token = req.body
+        res.send('Go back to the terminal!')
+        close()
+      })
+    })
+    return token
+  },
+
+  //
+  // A second method for re-authenticating if a token becomes invalid / expires
+  // - This can't have user input
+  //
+  async reauthenticate(token) {
+    if (token.expiry > Date.now()) return
+    let res = await axios.post('...')
+    return res.data
+  }
+}
 ```
 
-Create a cli entrypoint, **cli.ts**
-
-```ts
-import { dashund } from './dashund'
-dashund.runCLI(process.argv, process.cwd())
-```
-
-Run your own api
+Second you'll need a widget which will render things on the front end,
+e.g. **widgets.js**
 
 ```js
-import { dashund } from './dashund'
+exports.GitHubActivity = {
+  requiredEndpoints = ['github/activity']
 
-let config = await dashund.parseConfig(process.cwd())
+  create({ title = '' }) {
+    return { title }
+  }
 
-config.zones // Map<string, Zone[]>
-config.tokens // Map<string, Authorization[]>
+  async createFromCLI() {
+    const { title } = await prompts({
+      type: 'string',
+      name: 'title',
+      message: 'Widget name'
+    })
 
-let app = express()
+    return { title }
+  }
+}
+```
 
-app.use(
-  dashund.createApi(config, [
-    {
-      name: 'gitlab/ci-jobs',
-      interval: '5m',
-      handler: async ctx => {
-        ctx.zones // Map<string, Zone>
-        ctx.tokens // Map<string, Authorization>
+Third create endpoints which use the tokens to fetch data,
+e.g. **endpoints.js**
 
-        return { msg: 'Hello, world!' }
-      }
+```js
+const axios = require('axios')
+
+module.exports = [
+  {
+    name: 'github/activity',
+    requiredTokens: ['GitHub'],
+    interval: '5m',
+    handler: async ctx => {
+      let params = { token: ctx.tokens.get('GitHub') }
+      let res = await axios.get('...', { params })
+      return res.data
     }
-  ])
-)
-
-app.listen(3000, resolve)
+  }
+]
 ```
 
-Example requests with [httpie](https://httpie.org/):
+Next, create your instance, e.g. **dashund.js**
+
+```js
+const { Dashund } = require('dashund')
+
+// Import your token and widget factories and endpoints
+const widgets = require('./widgets')
+const tokens = require('./tokens')
+const endpoints = require('./endpoints')
+
+// Export an instance of Dashund
+module.exports = new Dashund(widgets, tokens, endpoints)
+```
+
+Then create a CLI entrypoint, **cli.js**
+
+```js
+const dashund = require('./dashund')
+dashund.runCLI()
+```
+
+Finally create a server entrypoint, **server.js**
+
+```js
+const dashund = require('./dashund')
+
+;async () => {
+  await dashund.runServer(3000)
+  console.log('Listening on :3000')
+}
+```
+
+Example requests with [httpie](https://httpie.org/)
 
 ```bash
 # Fetch a specify resource, calling it's handler
-http https://dashboard.io/gitlab/ci-jobs
+http https://dashboard.io/github/activity
 ```
 
 Example socket subscriptions with [akita-ws](https://github.com/robb-j/akita):
 
 ```bash
 akita wss://dashboard.io
-> {"type": "subscribe", "name": "gitlab/ci-jobs"}
-> {"type": "unsubscribe", "name": "gitlab/ci-jobs"}
-```
-
----
-
-Exploring modular cli commands
-
-```js
-class CommandLine {
-  commands = []
-
-  addModule(command) {
-    this.commands.push(command)
-  }
-
-  runCLI(cwd = process.cwd()) {
-    for (let cmd of this.commands) {
-      let yargs = new Yargs()
-    }
-  }
-}
-
-class Command {
-  configure(yargs, config = null) {}
-
-  wrapWithErrorHandler(block) {
-    return async (...args) => {
-      try {
-        await block(...args)
-      } catch (error) {
-        console.log(error.message)
-        console.log(error.stack.split('\n')[1])
-      }
-    }
-  }
-
-  loadConfig() {}
-}
-
-class GetCommand extends Command {
-  configure(cli) {
-    cli.yargs
-      .command('get <type> [id]')
-      .action(this.catchAndLog((type, id) => this.exec(cli.cwd, type, id)))
-  }
-
-  async exec(cwd, type, id) {
-    console.log(config)
-  }
-}
-```
-
----
-
-## Example CLI usage
-
-```bash
-# Show a zone and it's widgets
-dashund get zone left
-
-# Show an auth
-dashund get auth trello
-
-# Create a zone
-dashund create zone right
-
-# Create a widget
-dashund create widget trello_activity # --zone=left --type=TrelloActivity
-Pick a zone:
-* left
-  right
-Pick a type:
-  TrelloList
-* TrelloActivity
-  SlackMessages
-  Darksky
-
-# Create an token
+> {"type": "subscribe", "name": "github/activity"}
+> {"type": "unsubscribe", "name": "github/activity"}
 ```
