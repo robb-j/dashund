@@ -29,8 +29,8 @@ async function executeCreateWidget(dashund, args) {
     throw new Error(`Invalid Widget type '${type}'`)
   }
 
-  // Fail if required tokens are missing
-  if (Array.isArray(factory.requiredEndpoints)) {
+  // Fail if required endpoints are missing
+  if (factory.requiredEndpoints.length > 0) {
     let missing = factory.requiredEndpoints.filter(
       tokenName => !dashund.endpoints.find(e => e.name === tokenName)
     )
@@ -41,7 +41,7 @@ async function executeCreateWidget(dashund, args) {
   }
 
   // Let the widget create itself from the CLI
-  let widget = await factory.createFromCLI()
+  let widget = await factory.createFromCLI(dashund)
 
   // Store the widget
   config.zones.get(zone).push({

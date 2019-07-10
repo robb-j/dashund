@@ -1,13 +1,20 @@
 const { executeCreateWidget } = require('../widget')
-const { Dashund } = require('../../../dashund')
-const { Config } = require('../../../core')
+const { Dashund, Config } = require('../../../index')
 
-const makeMockWidget = () => ({
-  requiredEndpoints: ['test/endpoint'],
-  create: jest.fn(initial => initial),
-  createFromCLI: jest.fn(() => ({ configuredFromCLI: true })),
-  validate: jest.fn(() => true)
+const mockWidgets = () => ({
+  MockWidget: {
+    requiredEndpoints: ['test/endpoint'],
+    createFromCLI: jest.fn(() => ({ configuredFromCLI: true }))
+  }
 })
+
+const mockEndpoints = () => [
+  {
+    name: 'test/endpoint',
+    interval: '10m',
+    handler: () => 'Hey'
+  }
+]
 
 const correctWidgetArgs = {
   path: 'test_dir',
@@ -16,17 +23,11 @@ const correctWidgetArgs = {
   type: 'MockWidget'
 }
 
-const makeMockEndpoint = () => ({
-  name: 'test/endpoint',
-  interval: '10m',
-  handler: () => 'Hey'
-})
-
 describe('#executeCreateWidget', () => {
-  let dashund, config, MockWidget
+  let dashund, config, widgetFactory
   beforeEach(() => {
-    MockWidget = makeMockWidget()
-    dashund = new Dashund({ MockWidget }, {}, [makeMockEndpoint()])
+    dashund = new Dashund(mockWidgets(), {}, mockEndpoints())
+    widgetFactory = dashund.widgetFactories.get('MockWidget')
 
     config = new Config(dashund.widgetFactories, dashund.tokenFactories)
     config.save = jest.fn()
@@ -58,7 +59,7 @@ describe('#executeCreateWidget', () => {
   })
 
   it('should fail for missing endpoints', async () => {
-    MockWidget.requiredEndpoints = ['test/anotherEndpoint']
+    widgetFactory.requiredEndpoints = ['test/anotherEndpoint']
 
     let promise = executeCreateWidget(dashund, correctWidgetArgs)
 
@@ -68,7 +69,7 @@ describe('#executeCreateWidget', () => {
   it('should configure the widget from the CLI', async () => {
     await executeCreateWidget(dashund, correctWidgetArgs)
 
-    expect(MockWidget.createFromCLI).toHaveBeenCalled()
+    expect(widgetFactory.createFromCLI).toHaveBeenCalled()
   })
 
   it('should store the widget', async () => {

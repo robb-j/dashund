@@ -2,14 +2,6 @@ jest.mock('fs')
 
 const fs = require('fs')
 const { Config } = require('../config')
-const { Configurable } = require('../configurable')
-
-const makeMockConfigurable = () => {
-  let c = new Configurable()
-  c.create = jest.fn(config => ({ ...config }))
-  c.configureFromCLI = jest.fn()
-  return c
-}
 
 describe('Config', () => {
   let widgetFactories, tokenFactories
@@ -18,7 +10,9 @@ describe('Config', () => {
     widgetFactories = new Map()
     tokenFactories = new Map()
 
-    widgetFactories.set('some_widget', makeMockConfigurable())
+    widgetFactories.set('some_widget', {
+      createFromCLI: jest.fn()
+    })
   })
 
   describe('.from', () => {

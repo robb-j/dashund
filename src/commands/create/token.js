@@ -34,7 +34,7 @@ async function executeCreateToken(dashund, args) {
 
   // Use the type to create a token
   let factory = dashund.tokenFactories.get(type)
-  let token = await factory.createFromCLI()
+  let token = await factory.createFromCLI(dashund)
 
   // Store the token
   config.tokens.set(type, {

@@ -4,25 +4,42 @@ const express = require('express')
 const WebSocket = require('ws')
 const { createServer } = require('http')
 
-const { Config, Endpoint } = require('./core')
-const {
-  sharedLogger,
-  MissingTokenError,
-  ExpiredTokenError
-} = require('./utils')
+const { Config, Endpoint, TokenFactory, WidgetFactory } = require('./core')
+const { sharedLogger } = require('./utils')
 const { defaultCommands } = require('./commands')
+
+const defaultOptions = {
+  path: process.cwd(),
+  hostname: 'http://localhost'
+}
 
 class Dashund {
   /** Create a new dashund instance */
-  constructor(widgets = {}, tokens = {}, endpoints = [], path = process.cwd()) {
-    this.widgetFactories = new Map(Object.entries(widgets))
-    this.tokenFactories = new Map(Object.entries(tokens))
+  constructor(
+    widgets = {},
+    tokens = {},
+    endpoints = [],
+    { path, hostname } = defaultOptions
+  ) {
+    this.widgetFactories = new Map()
+    this.tokenFactories = new Map()
     this.endpoints = endpoints.map(conf => new Endpoint(conf))
     this.commands = defaultCommands
     this.timers = []
     this.endpointData = new Map()
     this.subscriptions = new Map()
     this.configPath = path
+    this.hostname = hostname
+
+    // Make sure token factories are all subclasses
+    for (let [key, value] of Object.entries(widgets)) {
+      this.widgetFactories.set(key, new WidgetFactory(value))
+    }
+
+    // Make sure token factories are all subclasses
+    for (let [key, value] of Object.entries(tokens)) {
+      this.tokenFactories.set(key, new TokenFactory(value))
+    }
   }
 
   /** Run the CLI */
@@ -54,6 +71,9 @@ class Dashund {
     // Fetch config
     let config = this.loadConfig(this.configPath)
 
+    // Make sure everything is in tip-top shape
+    this.runPreflightChecks(config)
+
     // Create an express app
     let app = express()
     let server = createServer(app)
@@ -74,6 +94,13 @@ class Dashund {
   /** Load dashund config with the current widget/token types */
   loadConfig(path) {
     return Config.from(path, this.widgetFactories, this.tokenFactories)
+  }
+
+  runPreflightChecks(config) {
+    // TODO: ensure widgets map to factories
+    // TODO: ensure widgets have required endpoints & tokens
+    // TODO: ensure tokens map to factories
+    // TODO: ensure endpoints have required tokens
   }
 
   /** @param {Config} config */
@@ -173,37 +200,18 @@ class Dashund {
 
   /** Execute an endpoint and store the result (catching any errors) */
   async runEndpoint(endpoint, config, attemptReauth = true) {
-    try {
-      // Ensure required tokens are set and gather them into an array
-      for (let tokenName of endpoint.requiredTokens) {
-        let token = config.tokens.get(tokenName)
-        if (!token) throw new MissingTokenError(tokenName)
-        await this.renewToken(token, config)
-      }
+    // Get the data from the endpoint
+    let data = await endpoint.performEndpoint(config)
 
-      // Fetch data using the handler
-      let data = await endpoint.handler({
-        zones: config.zones,
-        tokens: config.tokens
-      })
+    // Update the data cache
+    this.endpointData.set(endpoint.name, data)
 
-      // Update the data cache
-      this.endpointData.set(endpoint.name, data)
+    // Fetch socket subscribers
+    let subs = this.subscriptions.get(endpoint.name) || []
 
-      // Fetch socket subscribers
-      let subs = this.subscriptions.get(endpoint.name) || []
-
-      // Update socket subscribers
-      for (let sub of subs) {
-        sub.send(
-          JSON.stringify({
-            type: endpoint.name,
-            data: data
-          })
-        )
-      }
-    } catch (error) {
-      sharedLogger.warn(error)
+    // Update socket subscribers
+    for (let sub of subs) {
+      sub.send(JSON.stringify({ type: endpoint.name, data: data }))
     }
   }
 
@@ -240,27 +248,6 @@ class Dashund {
       let filteredSubs = subs.filter(ws => ws !== deadSocket)
       this.subscriptions.set(name, filteredSubs)
     })
-  }
-
-  /** Try to renew a token and save changes if it changed */
-  async renewToken(token, config) {
-    let tokenFactory = this.tokenFactories.get(token.type)
-    if (typeof tokenFactory.reauth !== 'function') return
-
-    try {
-      let newToken = await tokenFactory.reauth(token)
-      if (!newToken) return
-
-      config.tokens.set(token.type, {
-        type: token.type,
-        ...newToken
-      })
-
-      config.isDirty = true
-    } catch (error) {
-      sharedLogger.debug(error)
-      throw new ExpiredTokenError(token.type)
-    }
   }
 }
 

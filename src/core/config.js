@@ -2,6 +2,8 @@ const { join } = require('path')
 const fs = require('fs')
 const Yaml = require('yaml')
 
+const { sharedLogger } = require('../utils')
+
 class Config {
   constructor(widgetFactories = new Map(), tokenFactories = new Map()) {
     this.zones = new Map()
@@ -36,7 +38,7 @@ class Config {
         config.parseToken(JSON.parse(authData))
       }
     } catch (error) {
-      console.log(error)
+      sharedLogger.error(error)
       throw new Error(`Failed to load config`)
     }
     return config
