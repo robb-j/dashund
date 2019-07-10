@@ -1,17 +1,14 @@
-const { Dashund, TokenFactory, WidgetFactory, Endpoint } = require('../src')
+const { Dashund } = require('../src')
 const prompts = require('prompts')
 
-class TestToken extends TokenFactory {
+const TestToken = {
   async createFromCLI() {
     return { token: 'some_top_secret_value' }
   }
 }
 
-class TestWidget extends WidgetFactory {
-  constructor() {
-    super()
-    this.requiredEndpoints = ['test/endpoint']
-  }
+const TestWidget = {
+  requiredEndpoints: ['test/endpoint'],
 
   async createFromCLI() {
     const { title } = await prompts({
@@ -27,7 +24,7 @@ class TestWidget extends WidgetFactory {
 }
 
 let dashund = new Dashund({ TestWidget }, { TestToken }, [
-  new Endpoint({
+  {
     name: 'test/endpoint',
     requiredTokens: ['TestToken'],
     interval: '10s',
@@ -35,7 +32,7 @@ let dashund = new Dashund({ TestWidget }, { TestToken }, [
       // console.log('test/endpoint')
       return { msg: 'Hello, World!' }
     }
-  })
+  }
 ])
 
 module.exports = { dashund }
