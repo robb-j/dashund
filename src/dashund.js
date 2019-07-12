@@ -1,6 +1,7 @@
 const yargs = require('yargs/yargs')
 const ms = require('ms')
 const express = require('express')
+const cors = require('cors')
 const WebSocket = require('ws')
 const { createServer } = require('http')
 
@@ -10,7 +11,8 @@ const { defaultCommands } = require('./commands')
 
 const defaultOptions = {
   path: process.cwd(),
-  hostname: 'http://localhost'
+  hostname: 'http://localhost',
+  corsHosts: []
 }
 
 class Dashund {
@@ -19,7 +21,7 @@ class Dashund {
     widgets = {},
     tokens = {},
     endpoints = [],
-    { path, hostname } = defaultOptions
+    options = defaultOptions
   ) {
     this.widgetFactories = new Map()
     this.tokenFactories = new Map()
@@ -28,8 +30,8 @@ class Dashund {
     this.timers = []
     this.endpointData = new Map()
     this.subscriptions = new Map()
-    this.configPath = path
-    this.hostname = hostname
+
+    this.options = options
 
     // Make sure token factories are all subclasses
     for (let [key, value] of Object.entries(widgets)) {
@@ -69,7 +71,7 @@ class Dashund {
   /** Run the server */
   async runServer(port) {
     // Fetch config
-    let config = this.loadConfig(this.configPath)
+    let config = this.loadConfig(this.options.path)
 
     // Make sure everything is in tip-top shape
     this.runPreflightChecks(config)
@@ -77,6 +79,14 @@ class Dashund {
     // Create an express app
     let app = express()
     let server = createServer(app)
+
+    if (this.options.corsHosts.length > 0) {
+      app.use(
+        cors({
+          origin: this.options.corsHosts
+        })
+      )
+    }
 
     // Register JSON API middleware
     app.use(this.createAPIMiddleware(config))
@@ -193,13 +203,13 @@ class Dashund {
     // Add a timer check for dirty configs and save them
     setInterval(() => {
       if (!config.isDirty) return
-      config.save(this.configPath)
+      config.save(this.options.path)
       config.isDirty = false
     }, 5 * 1000)
   }
 
   /** Execute an endpoint and store the result (catching any errors) */
-  async runEndpoint(endpoint, config, attemptReauth = true) {
+  async runEndpoint(endpoint, config) {
     // Get the data from the endpoint
     let data = await endpoint.performEndpoint(config)
 
