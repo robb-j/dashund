@@ -14,7 +14,7 @@ class MissingTokenError extends Error {
 
 class ExpiredTokenError extends Error {
   constructor(tokenName) {
-    super(`Token expired: ${tokenName}`)
+    super(`${tokenName} token has expired`)
     this.tokenName = tokenName
   }
 }
