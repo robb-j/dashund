@@ -5,7 +5,13 @@ const cors = require('cors')
 const WebSocket = require('ws')
 const { createServer } = require('http')
 
-const { Config, Endpoint, TokenFactory, WidgetFactory } = require('./core')
+const {
+  Config,
+  Endpoint,
+  TokenFactory,
+  WidgetFactory,
+  EndpointResult
+} = require('./core')
 const { sharedLogger } = require('./utils')
 const { defaultCommands } = require('./commands')
 
@@ -164,7 +170,11 @@ class Dashund {
       let { name, interval, handler } = endpoint
 
       router.get(sanitizeName(name), async (req, res) => {
-        res.send({ data: this.endpointData.get(endpoint.name) })
+        let result = this.endpointData.get(endpoint.name)
+
+        if (!result) result = EndpointResult.notFound()
+
+        res.status(result.status).send(result.serialize(name))
       })
     }
 
@@ -208,20 +218,24 @@ class Dashund {
     }, 5 * 1000)
   }
 
-  /** Execute an endpoint and store the result (catching any errors) */
+  /**
+    Execute an endpoint and store the result (catching any errors)
+    @param {Endpoint} endpoint
+    @param {Config} config
+   */
   async runEndpoint(endpoint, config) {
     // Get the data from the endpoint
-    let data = await endpoint.performEndpoint(config)
+    let result = await endpoint.performEndpoint(config)
 
     // Update the data cache
-    this.endpointData.set(endpoint.name, data)
+    this.endpointData.set(endpoint.name, result)
 
     // Fetch socket subscribers
     let subs = this.subscriptions.get(endpoint.name) || []
 
     // Update socket subscribers
     for (let sub of subs) {
-      sub.send(JSON.stringify({ type: endpoint.name, data: data }))
+      sub.send(JSON.stringify(result.serialize(endpoint.name)))
     }
   }
 

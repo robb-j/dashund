@@ -1,6 +1,45 @@
 const ms = require('ms')
 
-const { sharedLogger, ReauthError, requiredArg } = require('../utils')
+const {
+  sharedLogger,
+  ReauthError,
+  requiredArg,
+  ExpiredTokenError
+} = require('../utils')
+
+class EndpointResult {
+  static withData(data) {
+    return new EndpointResult(data, 200)
+  }
+
+  static notFound() {
+    return new EndpointResult(null, 404)
+  }
+
+  static notAuthenticated() {
+    return new EndpointResult(null, 401)
+  }
+
+  /**
+    @param {object|null} data
+    @param {number} status
+   */
+  constructor(data, status) {
+    this.data = data
+    this.status = status
+  }
+
+  /**
+    @param {string} name
+   */
+  serialize(name) {
+    return {
+      type: name,
+      data: this.data,
+      status: this.status
+    }
+  }
+}
 
 /** A function responsible for periodically fetching information */
 class Endpoint {
@@ -22,6 +61,7 @@ class Endpoint {
     this.requiredTokens = requiredTokens
   }
 
+  /** @returns {EndpointResult} */
   async performEndpoint(config, attemptRefresh = true) {
     try {
       // Ensure required tokens are set and gather them into an array
@@ -36,10 +76,12 @@ class Endpoint {
 
       // Fetch data using the handler
       // NOTE: await is needed here so ReauthError is caught
-      return await this.handler({
+      let data = await this.handler({
         zones: config.zones,
         tokens: config.tokens
       })
+
+      return EndpointResult.withData(data)
     } catch (error) {
       // Look for ReauthErrors
       // -> If so and we are allowed to refresh, refresh and retry the endpoint
@@ -54,10 +96,14 @@ class Endpoint {
         return this.performEndpoint(config, false)
       }
 
+      if (error instanceof ExpiredTokenError) {
+        return EndpointResult.notAuthenticated()
+      }
+
       sharedLogger.error(error)
-      return null
+      return EndpointResult.notFound()
     }
   }
 }
 
-module.exports = { Endpoint }
+module.exports = { Endpoint, EndpointResult }
