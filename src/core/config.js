@@ -4,6 +4,8 @@ const Yaml = require('yaml')
 
 const { sharedLogger } = require('../utils')
 
+const CONFIG_FOLDER = '.dashund'
+
 class Config {
   constructor(widgetFactories = new Map(), tokenFactories = new Map()) {
     this.zones = new Map()
@@ -14,7 +16,7 @@ class Config {
   }
 
   static from(path = '.', widgetFactories, tokenFactories) {
-    const configDir = join(path, '.dashund')
+    const configDir = join(path, CONFIG_FOLDER)
     const config = new Config(widgetFactories, tokenFactories)
 
     let paths
@@ -65,7 +67,7 @@ class Config {
   }
 
   save(dir) {
-    let path = join(dir, '.dashund')
+    let path = join(dir, CONFIG_FOLDER)
 
     // First ensure the dashund folder exists
     try {
@@ -93,4 +95,4 @@ class Config {
   }
 }
 
-module.exports = { Config }
+module.exports = { Config, CONFIG_FOLDER }
