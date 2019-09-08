@@ -1,5 +1,8 @@
-const express = require('express')
-const stoppable = require('stoppable')
+import * as express from 'express'
+import * as stoppable from 'stoppable'
+
+type StopFn = () => void
+type SetupFn = (app: express.Application, stop: StopFn) => void
 
 /**
   Create a temporary express server, set it up with endpoints
@@ -18,7 +21,7 @@ const stoppable = require('stoppable')
   console.log(someVariable)
   ```
 */
-async function runTemporaryServer(port, setup) {
+async function runTemporaryServer(port: number, setup: SetupFn) {
   let app = express()
 
   // Create a promise to run the server, register endpoints
@@ -26,7 +29,7 @@ async function runTemporaryServer(port, setup) {
   return new Promise(async (resolve, reject) => {
     let server = app.listen(port, () => {
       server = stoppable(server, 500)
-      const closeServer = async () => server.stop(resolve)
+      const closeServer = async () => (server as any).stop(resolve)
       setup(app, closeServer)
     })
   })

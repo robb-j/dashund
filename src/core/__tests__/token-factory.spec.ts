@@ -1,13 +1,11 @@
-const { TokenFactory } = require('../token-factory')
-const { Config } = require('../config')
-const { ExpiredTokenError } = require('../../utils')
+import { TokenFactory } from '../token-factory'
+import { Config } from '../config'
+import { Token } from '../token'
+import { ExpiredTokenError } from '../../utils'
+import { mocked } from 'ts-jest/utils'
 
 describe('TokenFactory', () => {
   describe('#constructor', () => {
-    it('should require a "createFromCLI"', () => {
-      let exec = () => new TokenFactory()
-      expect(exec).toThrow(/createFromCLI is required/)
-    })
     it('should store properties', () => {
       let createFromCLI = jest.fn()
       let hasExpired = jest.fn()
@@ -26,7 +24,10 @@ describe('TokenFactory', () => {
   })
 
   describe('#performRefresh', () => {
-    let token, config, factory
+    let token: Token
+    let config: Config
+    let factory: TokenFactory
+
     beforeEach(() => {
       token = { type: 'MockToken', some: 'value' }
 
@@ -41,14 +42,14 @@ describe('TokenFactory', () => {
     })
 
     it('should do nothing when hasExpired is false', async () => {
-      await factory.hasExpired.mockReturnValue(false)
+      await mocked(factory.hasExpired).mockReturnValue(false)
 
       await factory.performRefresh(token, config)
       expect(config.tokens.get('MockToken')).toEqual(token)
     })
 
     it('should fail if no token is returned', async () => {
-      await factory.refreshToken.mockResolvedValue(null)
+      await mocked(factory.refreshToken).mockResolvedValue(null)
 
       let promise = factory.performRefresh(token, config)
       expect(promise).rejects.toThrow(ExpiredTokenError)

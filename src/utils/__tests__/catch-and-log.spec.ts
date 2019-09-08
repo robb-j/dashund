@@ -1,4 +1,4 @@
-const { catchAndLog } = require('../catch-and-log')
+import { catchAndLog } from '../catch-and-log'
 
 describe('#catchAndLog', () => {
   it('should log the error', async () => {

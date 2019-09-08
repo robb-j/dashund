@@ -1,35 +1,43 @@
+import { mocked } from 'ts-jest/utils'
+
+import { WidgetFactory } from '../widget'
+import { TokenFactory } from '../token'
+
+import * as fs from 'fs'
+import { Config } from '../config'
+
 jest.mock('fs')
 
-const fs = require('fs')
-const { Config } = require('../config')
-
 describe('Config', () => {
-  let widgetFactories, tokenFactories
+  let widgetFactories: Map<string, WidgetFactory>
+  let tokenFactories: Map<string, TokenFactory>
 
   beforeEach(() => {
     widgetFactories = new Map()
     tokenFactories = new Map()
 
     widgetFactories.set('some_widget', {
-      createFromCLI: jest.fn()
+      createFromCLI: jest.fn(),
+      requiredEndpoints: [],
+      requiredTokens: []
     })
   })
 
   describe('.from', () => {
     it('should load widgets.yml', () => {
-      fs.readdirSync.mockReturnValue(['widgets.yml'])
-      fs.readFileSync.mockReturnValue('{}')
+      mocked<any>(fs.readdirSync).mockReturnValue(['widgets.yml'])
+      mocked(fs.readFileSync).mockReturnValue('{}')
 
-      Config.from('.', {}, {})
+      Config.from('.')
 
       expect(fs.readFileSync).toBeCalledWith('.dashund/widgets.yml', 'utf8')
     })
 
     it('should load tokens.json', () => {
-      fs.readdirSync.mockReturnValue(['tokens.json'])
-      fs.readFileSync.mockReturnValue('{}')
+      mocked<any>(fs.readdirSync).mockReturnValue(['tokens.json'])
+      mocked(fs.readFileSync).mockReturnValue('{}')
 
-      Config.from('.', {}, {})
+      Config.from('.')
 
       expect(fs.readFileSync).toBeCalledWith('.dashund/tokens.json', 'utf8')
     })
@@ -59,7 +67,7 @@ describe('Config', () => {
       let config = new Config(widgetFactories, tokenFactories)
       config.parseToken(input)
 
-      let service = config.tokens.get('some_service')
+      let service = config.tokens.get('some_service')!
       expect(service).toBeDefined()
 
       const { type, secret } = service
@@ -73,7 +81,7 @@ describe('Config', () => {
       let config = new Config()
 
       // Pretend the directory doesn't exist
-      fs.statSync.mockImplementation(() => {
+      mocked(fs.statSync).mockImplementation(() => {
         throw new Error()
       })
 

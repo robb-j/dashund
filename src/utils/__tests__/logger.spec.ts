@@ -1,21 +1,11 @@
-const { Logger, sharedLogger, defaultLogLevels } = require('../logger')
+import { Logger, sharedLogger, allLogLevels } from '../logger'
 
 describe('Logger', () => {
   describe('#constructor', () => {
-    it('should fail for invalid levels', () => {
-      let setup = () => new Logger('invalid_level')
-      expect(setup).toThrow(/invalid_level/)
-    })
-
     it('should setup properties', () => {
-      let levels = {
-        custom: 1
-      }
+      let logger = new Logger('silly')
 
-      let logger = new Logger('custom', levels)
-
-      expect(logger.level).toEqual('custom')
-      expect(logger.availableLevels).toEqual(levels)
+      expect(logger.level).toEqual('silly')
     })
 
     it('should add logger methods', () => {
@@ -34,6 +24,5 @@ describe('Logger', () => {
 describe('#sharedLogger', () => {
   it('should setup a default instance', () => {
     expect(sharedLogger.level).toEqual('error')
-    expect(sharedLogger.availableLevels).toEqual(defaultLogLevels)
   })
 })

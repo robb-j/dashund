@@ -1,12 +1,21 @@
-const { join } = require('path')
-const fs = require('fs')
-const Yaml = require('yaml')
+import { join } from 'path'
+import * as fs from 'fs'
+import * as Yaml from 'yaml'
 
-const { sharedLogger } = require('../utils')
+import { sharedLogger } from '../utils'
 
-const CONFIG_FOLDER = '.dashund'
+import { Token, TokenFactory } from './token'
+import { Widget, WidgetFactory } from './widget'
 
-class Config {
+export const CONFIG_FOLDER = '.dashund'
+
+export class Config {
+  zones: Map<string, Widget[]>
+  tokens: Map<string, Token>
+  widgetFactories: Map<string, WidgetFactory>
+  tokenFactories: Map<string, TokenFactory>
+  isDirty: boolean
+
   constructor(widgetFactories = new Map(), tokenFactories = new Map()) {
     this.zones = new Map()
     this.tokens = new Map()
@@ -15,7 +24,11 @@ class Config {
     this.isDirty = false
   }
 
-  static from(path = '.', widgetFactories, tokenFactories) {
+  static from(
+    path = '.',
+    widgetFactories = new Map<string, WidgetFactory>(),
+    tokenFactories = new Map<string, TokenFactory>()
+  ) {
     const configDir = join(path, CONFIG_FOLDER)
     const config = new Config(widgetFactories, tokenFactories)
 
@@ -46,7 +59,7 @@ class Config {
     return config
   }
 
-  parseZones(data) {
+  parseZones(data: any) {
     for (let [zone, widgets] of Object.entries(data)) {
       if (!Array.isArray(widgets)) throw new Error(`${zone} is not an array`)
 
@@ -60,13 +73,13 @@ class Config {
     }
   }
 
-  parseToken(data) {
+  parseToken(data: object) {
     for (let [type, config] of Object.entries(data)) {
       this.tokens.set(type, { type, ...config })
     }
   }
 
-  save(dir) {
+  save(dir: string) {
     let path = join(dir, CONFIG_FOLDER)
 
     // First ensure the dashund folder exists
@@ -77,12 +90,12 @@ class Config {
       fs.mkdirSync(path, { recursive: true })
     }
 
-    let widgetsData = {}
+    let widgetsData: any = {}
     this.zones.forEach((widgets, zoneName) => {
       widgetsData[zoneName] = widgets
     })
 
-    let tokensData = {}
+    let tokensData: any = {}
     this.tokens.forEach((token, tokenName) => {
       tokensData[tokenName] = token
     })
@@ -94,5 +107,3 @@ class Config {
     fs.writeFileSync(join(path, 'tokens.json'), JSON.stringify(tokensData))
   }
 }
-
-module.exports = { Config, CONFIG_FOLDER }
