@@ -12,3 +12,8 @@ export interface WidgetFactory {
   requiredEndpoints?: string[]
   requiredTokens?: string[]
 }
+
+export function validateWidgetFactory(value: any) {
+  // TODO: ...
+  return true
+}

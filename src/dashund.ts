@@ -1,19 +1,33 @@
-const yargs = require('yargs/yargs')
-const ms = require('ms')
-const express = require('express')
-const cors = require('cors')
-const WebSocket = require('ws')
-const { createServer } = require('http')
+import yargs = require('yargs/yargs')
+import ms = require('ms')
 
-const {
+import * as express from 'express'
+import * as cors from 'cors'
+import * as WebSocket from 'ws'
+import { createServer, Server } from 'http'
+
+import {
   Config,
   Endpoint,
   TokenFactory,
   WidgetFactory,
-  EndpointResult
-} = require('./core')
-const { sharedLogger } = require('./utils')
-const { defaultCommands } = require('./commands')
+  EndpointResult,
+  validateTokenFactory,
+  validateWidgetFactory,
+  performEndpoint,
+  performTokenRefresh
+} from './core'
+
+import { sharedLogger } from './utils'
+import { defaultCommands } from './commands'
+
+export type DashundOptions = {
+  path: string
+  hostname: string
+  corsHosts: string[]
+}
+
+type Raw<T> = { [index: string]: T }
 
 const defaultOptions = {
   path: process.cwd(),
@@ -21,32 +35,41 @@ const defaultOptions = {
   corsHosts: []
 }
 
-class Dashund {
+export class Dashund {
+  widgetFactories: Map<string, WidgetFactory>
+  tokenFactories: Map<string, TokenFactory>
+  endpoints: Endpoint[]
+  commands: any[]
+  timers: NodeJS.Timeout[]
+  endpointData: Map<string, EndpointResult>
+  subscriptions: Map<string, WebSocket[]>
+  options: DashundOptions
+
   /** Create a new dashund instance */
   constructor(
-    widgets = {},
-    tokens = {},
-    endpoints = [],
-    options = defaultOptions
+    widgets: Raw<WidgetFactory>,
+    tokens: Raw<TokenFactory>,
+    endpoints: Endpoint[],
+    options: Partial<DashundOptions> = {}
   ) {
-    this.widgetFactories = new Map()
-    this.tokenFactories = new Map()
-    this.endpoints = endpoints.map(conf => new Endpoint(conf))
+    this.widgetFactories = new Map(Object.entries(widgets))
+    this.tokenFactories = new Map(Object.entries(tokens))
+    this.endpoints = [...endpoints]
     this.commands = defaultCommands
     this.timers = []
     this.endpointData = new Map()
     this.subscriptions = new Map()
 
-    this.options = options
+    this.options = { ...defaultOptions, ...options }
 
     // Make sure token factories are all subclasses
-    for (let [key, value] of Object.entries(widgets)) {
-      this.widgetFactories.set(key, new WidgetFactory(value))
+    for (let factory of this.tokenFactories.values()) {
+      validateTokenFactory(factory)
     }
 
-    // Make sure token factories are all subclasses
-    for (let [key, value] of Object.entries(tokens)) {
-      this.tokenFactories.set(key, new TokenFactory(value))
+    // // Make sure token factories are all subclasses
+    for (let factory of this.widgetFactories.values()) {
+      validateWidgetFactory(factory)
     }
   }
 
@@ -75,7 +98,7 @@ class Dashund {
   }
 
   /** Run the server */
-  async runServer(port) {
+  async runServer(port: number) {
     // Fetch config
     let config = this.loadConfig(this.options.path)
 
@@ -108,24 +131,23 @@ class Dashund {
   }
 
   /** Load dashund config with the current widget/token types */
-  loadConfig(path) {
+  loadConfig(path: string) {
     return Config.from(path, this.widgetFactories, this.tokenFactories)
   }
 
-  runPreflightChecks(config) {
+  runPreflightChecks(config: Config) {
     // TODO: ensure widgets map to factories
     // TODO: ensure widgets have required endpoints & tokens
     // TODO: ensure tokens map to factories
     // TODO: ensure endpoints have required tokens
   }
 
-  /** @param {Config} config */
-  createAPIMiddleware(config) {
+  createAPIMiddleware(config: Config) {
     let router = express.Router()
 
     // Add a route to show widget/zone configuration
     router.get('/zones', (req, res) => {
-      let payload = []
+      let payload: any[] = []
 
       config.zones.forEach((widgets, name) => {
         payload.push({ name, widgets })
@@ -147,7 +169,7 @@ class Dashund {
 
     // EXPERIMENTAL: Add a route to show subscriptions
     router.get('/subs', (req, res) => {
-      let payload = {}
+      let payload: any = {}
 
       this.subscriptions.forEach((subs, name) => {
         payload[name] = subs.length
@@ -158,7 +180,7 @@ class Dashund {
 
     // A lambda to format endpoint names into routes
     // e.g. /some/endpoint/ => /some/endpoint
-    const sanitizeName = name =>
+    const sanitizeName = (name: string) =>
       '/' +
       name
         .replace(/^\//, '')
@@ -181,8 +203,7 @@ class Dashund {
     return router
   }
 
-  /** @param {Config} config */
-  attachSocketServer(config, httpServer) {
+  attachSocketServer(config: Config, httpServer: Server) {
     let wss = new WebSocket.Server({ server: httpServer })
 
     // Register events when new sockets connect
@@ -195,7 +216,7 @@ class Dashund {
   }
 
   /** Setup endpoint timers to periodically poll data, store the result and update sockets */
-  async setupTimers(config) {
+  async setupTimers(config: Config) {
     for (let endpoint of this.endpoints) {
       // Create an interval to run the endpoint periodically
       let timerId = setInterval(
@@ -223,9 +244,9 @@ class Dashund {
     @param {Endpoint} endpoint
     @param {Config} config
    */
-  async runEndpoint(endpoint, config) {
+  async runEndpoint(endpoint: Endpoint, config: Config) {
     // Get the data from the endpoint
-    let result = await endpoint.performEndpoint(config)
+    let result = await performEndpoint(endpoint, config, performTokenRefresh)
 
     // Update the data cache
     this.endpointData.set(endpoint.name, result)
@@ -240,10 +261,10 @@ class Dashund {
   }
 
   /** Handle a data payload from a socket */
-  handleSocket(socket, data) {
+  handleSocket(socket: WebSocket, data: WebSocket.Data) {
     try {
       // Deconstruct the JSON payload
-      let { type, ...params } = JSON.parse(data)
+      let { type, ...params } = JSON.parse(data.toString())
 
       // Handle subscription messages
       if (type === 'sub') {
@@ -267,7 +288,7 @@ class Dashund {
   }
 
   /** Remove subscriptions for a socket */
-  clearSocket(deadSocket) {
+  clearSocket(deadSocket: WebSocket) {
     this.subscriptions.forEach((subs, name) => {
       let filteredSubs = subs.filter(ws => ws !== deadSocket)
       this.subscriptions.set(name, filteredSubs)

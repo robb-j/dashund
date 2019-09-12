@@ -16,16 +16,7 @@ export interface TokenFactory {
   refreshToken(token: Token): Promise<Token | null>
 }
 
-export interface TokenRefresher {
-  (
-    token: Token,
-    factory: TokenFactory,
-    config: Config,
-    skipExpiry: boolean
-  ): Promise<void>
-
-  (token: Token, factory: TokenFactory, config: Config): Promise<void>
-}
+export type TokenRefresher = typeof performTokenRefresh
 
 export async function performTokenRefresh(
   token: Token,
@@ -61,4 +52,9 @@ export async function performTokenRefresh(
     sharedLogger.debug(error)
     throw new ExpiredTokenError(token.type)
   }
+}
+
+export function validateTokenFactory(value: any) {
+  // TODO: ...
+  return true
 }

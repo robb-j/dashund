@@ -2,27 +2,36 @@ jest.mock('fs')
 jest.mock('../utils/logger')
 jest.useFakeTimers()
 
-const request = require('supertest')
-const express = require('express')
-const { Dashund } = require('../dashund')
-const { Config, Endpoint } = require('../core')
-const { MissingTokenError, sharedLogger } = require('../utils')
+import request = require('supertest')
+import express = require('express')
+import { Dashund } from '../dashund'
+import { Config, Endpoint, TokenFactory, EndpointResult } from '../core'
+import { MissingTokenError, sharedLogger } from '../utils'
+import supertest = require('supertest')
 
-const mockEndpoint = () => ({
+type Make<T> = () => T
+
+const mockEndpoint: Make<Endpoint> = () => ({
   name: 'test/endpoint',
   interval: '10m',
-  handler: jest.fn(() => 'hello_world')
+  handler: jest.fn(async () => 'hello_world'),
+  requiredTokens: []
 })
 
-const expiredTokenFactory = () => ({
-  create: config => config,
-  createFromCLI: () => {},
+const expiredTokenFactory: Make<TokenFactory> = () => ({
+  createFromCLI: async () => ({ type: 'expired_token' }),
   hasExpired: jest.fn(() => false),
-  refreshToken: jest.fn(() => ({ secret: 'refreshed_secret' }))
+  refreshToken: jest.fn(async () => ({
+    type: 'expired_token',
+    secret: 'refreshed_secret'
+  }))
 })
 
 describe('Dashund', () => {
-  let dashund, config, endpoint, ExpiredToken
+  let dashund: Dashund
+  let config: Config
+  let endpoint: Endpoint
+  let ExpiredToken: TokenFactory
 
   beforeEach(() => {
     ExpiredToken = expiredTokenFactory()
@@ -44,7 +53,8 @@ describe('Dashund', () => {
   })
 
   describe('#createAPIMiddleware', () => {
-    let app, agent
+    let app: express.Application
+    let agent: supertest.SuperTest<supertest.Test>
     beforeEach(() => {
       app = express()
       agent = request(app)
@@ -94,7 +104,10 @@ describe('Dashund', () => {
     })
 
     it('should register endpoints', async () => {
-      dashund.endpointData.set('test/endpoint', 'some_value')
+      dashund.endpointData.set(
+        'test/endpoint',
+        EndpointResult.withData('some_value')
+      )
 
       let res = await agent.get('/test/endpoint')
 
@@ -104,8 +117,9 @@ describe('Dashund', () => {
   })
 
   describe('#handleSocket', () => {
+    let spy: any = {}
     it('should handle JSON errors', () => {
-      let handle = () => dashund.handleSocket(jest.fn(), '/something_not+json')
+      let handle = () => dashund.handleSocket(spy, '/something_not+json')
       expect(handle).not.toThrow()
     })
 
@@ -114,7 +128,7 @@ describe('Dashund', () => {
         let socket = jest.fn()
 
         let body = JSON.stringify({ type: 'sub', target: 'test/endpoint' })
-        dashund.handleSocket(socket, body)
+        dashund.handleSocket(spy, body)
 
         let subs = dashund.subscriptions.get('test/endpoint')
         expect(subs).toContain(socket)
@@ -125,10 +139,10 @@ describe('Dashund', () => {
       it('should unstore the subscription', () => {
         let socket = jest.fn()
 
-        dashund.subscriptions.set('test/endpoint', [socket])
+        dashund.subscriptions.set('test/endpoint', [spy])
 
         let body = JSON.stringify({ type: 'unsub', target: 'test/endpoint' })
-        dashund.handleSocket(socket, body)
+        dashund.handleSocket(spy, body)
 
         let subs = dashund.subscriptions.get('test/endpoint')
         expect(subs).not.toContain(socket)
@@ -173,7 +187,7 @@ describe('Dashund', () => {
 
   describe('#runEndpoint', () => {
     it('should execute the handler', async () => {
-      await dashund.runEndpoint(new Endpoint(endpoint), config)
+      await dashund.runEndpoint(endpoint, config)
 
       expect(endpoint.handler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -184,16 +198,16 @@ describe('Dashund', () => {
     })
 
     it('should store the result', async () => {
-      await dashund.runEndpoint(new Endpoint(endpoint), config)
+      await dashund.runEndpoint(endpoint, config)
 
       expect(dashund.endpointData.get('test/endpoint')).toEqual('hello_world')
     })
 
     it('should notify subscriptions', async () => {
-      let sub = { send: jest.fn() }
+      let sub: any = { send: jest.fn() }
       dashund.subscriptions.set('test/endpoint', [sub])
 
-      await dashund.runEndpoint(new Endpoint(endpoint), config)
+      await dashund.runEndpoint(endpoint, config)
 
       let expected = JSON.stringify({
         type: 'test/endpoint',
@@ -205,7 +219,7 @@ describe('Dashund', () => {
     // it('should throw if required tokens are missing', async () => {
     //   endpoint.requiredTokens = ['ExpiredToken']
     //
-    //   await dashund.runEndpoint(new Endpoint(endpoint), config)
+    //   await dashund.runEndpoint(endpoint, config)
     //
     //   expect(sharedLogger.warn).toBeCalledWith(expect.any(MissingTokenError))
     // })
@@ -217,7 +231,7 @@ describe('Dashund', () => {
     //     secret: 'some_secret_value'
     //   })
     //
-    //   await dashund.runEndpoint(new Endpoint(endpoint), config)
+    //   await dashund.runEndpoint(endpoint, config)
     //
     //   expect(ExpiredToken.refreshToken).toBeCalled()
     //
@@ -267,7 +281,7 @@ describe('Dashund', () => {
 
   describe('#clearSocket', () => {
     it('should remove instances of the socket', () => {
-      let sub = jest.fn()
+      let sub: any = {}
       dashund.subscriptions.set('test/endpoint', [sub])
 
       dashund.clearSocket(sub)
