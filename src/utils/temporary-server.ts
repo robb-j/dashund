@@ -21,7 +21,7 @@ type SetupFn = (app: express.Application, stop: StopFn) => void
   console.log(someVariable)
   ```
 */
-async function runTemporaryServer(port: number, setup: SetupFn) {
+export async function runTemporaryServer(port: number, setup: SetupFn) {
   let app = express()
 
   // Create a promise to run the server, register endpoints
@@ -34,5 +34,3 @@ async function runTemporaryServer(port: number, setup: SetupFn) {
     })
   })
 }
-
-module.exports = { runTemporaryServer }
