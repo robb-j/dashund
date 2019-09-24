@@ -4,26 +4,6 @@ import { Token } from '../token'
 import { ExpiredTokenError } from '../../utils'
 import { mocked } from 'ts-jest/utils'
 
-// describe('TokenFactory', () => {
-//   describe('#constructor', () => {
-//     it('should store properties', () => {
-//       let createFromCLI = jest.fn()
-//       let hasExpired = jest.fn()
-//       let refreshToken = jest.fn()
-
-//       let factory = new TokenFactory({
-//         createFromCLI,
-//         hasExpired,
-//         refreshToken
-//       })
-
-//       expect(factory.createFromCLI).toEqual(createFromCLI)
-//       expect(factory.hasExpired).toEqual(hasExpired)
-//       expect(factory.refreshToken).toEqual(refreshToken)
-//     })
-//   })
-// })
-
 describe('#performTokenRefresh', () => {
   let token: Token
   let config: Config
@@ -50,7 +30,7 @@ describe('#performTokenRefresh', () => {
   })
 
   it('should fail if no token is returned', async () => {
-    await mocked(factory.refreshToken).mockResolvedValue(null)
+    mocked(factory.refreshToken).mockResolvedValue(null)
 
     let promise = performTokenRefresh(token, factory, config)
     expect(promise).rejects.toThrow(ExpiredTokenError)

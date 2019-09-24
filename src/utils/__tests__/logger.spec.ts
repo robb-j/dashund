@@ -19,6 +19,26 @@ describe('Logger', () => {
       expect(logger.error).toBeInstanceOf(Function)
     })
   })
+
+  it('should add convenience methods', () => {
+    let logger = new Logger('silly')
+    logger.write = jest.fn()
+
+    logger.silly('silly_message')
+    logger.debug('debug_message')
+    logger.verbose('verbose_message')
+    logger.info('info_message')
+    logger.warn('warn_message')
+    logger.error('error_message')
+
+    expect(logger.write).toBeCalledWith('silly', 'silly_message')
+    expect(logger.write).toBeCalledWith('debug', 'debug_message')
+    expect(logger.write).toBeCalledWith('verbose', 'verbose_message')
+    expect(logger.write).toBeCalledWith('info', 'info_message')
+    expect(logger.write).toBeCalledWith('info', 'info_message')
+    expect(logger.write).toBeCalledWith('warn', 'warn_message')
+    expect(logger.write).toBeCalledWith('error', 'error_message')
+  })
 })
 
 describe('#sharedLogger', () => {

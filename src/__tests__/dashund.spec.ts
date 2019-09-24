@@ -41,8 +41,8 @@ describe('Dashund', () => {
       secret: 'some_secret_value'
     })
     config.zones.set('left', [
-      { type: 'WidgetA', name: 'geoff' },
-      { type: 'WidgetB', name: 'tim' }
+      { type: 'WidgetA', id: 'geoff' },
+      { type: 'WidgetB', id: 'tim' }
     ])
 
     endpoint = mockEndpoint()
@@ -83,11 +83,11 @@ describe('Dashund', () => {
 
         expect(widgets).toContainEqual({
           type: 'WidgetA',
-          name: 'geoff'
+          id: 'geoff'
         })
         expect(widgets).toContainEqual({
           type: 'WidgetB',
-          name: 'tim'
+          id: 'tim'
         })
       })
     })
@@ -112,7 +112,11 @@ describe('Dashund', () => {
       let res = await agent.get('/test/endpoint')
 
       expect(res.status).toEqual(200)
-      expect(res.body).toEqual({ data: 'some_value' })
+      expect(res.body).toEqual({
+        type: 'test/endpoint',
+        status: 200,
+        data: 'some_value'
+      })
     })
   })
 
@@ -125,13 +129,12 @@ describe('Dashund', () => {
 
     describe('type=sub', () => {
       it('should store the subscription', () => {
-        let socket = jest.fn()
-
         let body = JSON.stringify({ type: 'sub', target: 'test/endpoint' })
         dashund.handleSocket(spy, body)
 
         let subs = dashund.subscriptions.get('test/endpoint')
-        expect(subs).toContain(socket)
+
+        expect(subs).toContain(spy)
       })
     })
 
@@ -200,7 +203,9 @@ describe('Dashund', () => {
     it('should store the result', async () => {
       await dashund.runEndpoint(endpoint, config)
 
-      expect(dashund.endpointData.get('test/endpoint')).toEqual('hello_world')
+      let result = dashund.endpointData.get('test/endpoint')
+      expect(result).toBeInstanceOf(EndpointResult)
+      expect(result!.data).toEqual('hello_world')
     })
 
     it('should notify subscriptions', async () => {
@@ -211,7 +216,8 @@ describe('Dashund', () => {
 
       let expected = JSON.stringify({
         type: 'test/endpoint',
-        data: 'hello_world'
+        data: 'hello_world',
+        status: 200
       })
       expect(sub.send).toHaveBeenCalledWith(expected)
     })

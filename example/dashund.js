@@ -1,4 +1,4 @@
-const { Dashund } = require('../src')
+const { Dashund } = require('../dist')
 const prompts = require('prompts')
 
 const TestToken = {

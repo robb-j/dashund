@@ -1,3 +1,4 @@
+export * from './command'
 export * from './config'
 export * from './endpoint'
 export * from './token'

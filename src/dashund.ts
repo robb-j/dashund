@@ -15,7 +15,8 @@ import {
   validateTokenFactory,
   validateWidgetFactory,
   performEndpoint,
-  performTokenRefresh
+  performTokenRefresh,
+  CommandFactory
 } from './core'
 
 import { sharedLogger } from './utils'
@@ -25,6 +26,10 @@ export type DashundOptions = {
   path: string
   hostname: string
   corsHosts: string[]
+}
+
+export type DefaultCLIArgs = {
+  path: string
 }
 
 type Raw<T> = { [index: string]: T }
@@ -39,7 +44,7 @@ export class Dashund {
   widgetFactories: Map<string, WidgetFactory>
   tokenFactories: Map<string, TokenFactory>
   endpoints: Endpoint[]
-  commands: any[]
+  commands: CommandFactory[]
   timers: NodeJS.Timeout[]
   endpointData: Map<string, EndpointResult>
   subscriptions: Map<string, WebSocket[]>
@@ -67,9 +72,15 @@ export class Dashund {
       validateTokenFactory(factory)
     }
 
-    // // Make sure token factories are all subclasses
+    // Make sure token factories are all subclasses
     for (let factory of this.widgetFactories.values()) {
       validateWidgetFactory(factory)
+    }
+
+    // Setup endpoint data and
+    for (let endpoint of endpoints) {
+      this.endpointData.set(endpoint.name, EndpointResult.notFound())
+      this.subscriptions.set(endpoint.name, [])
     }
   }
 
@@ -80,12 +91,12 @@ export class Dashund {
       .help()
       .alias('help', 'h')
       .option('path', {
-        describe: 'The path to your .dashund folder',
-        default: process.cwd()
+        describe: 'The path where your .dashund folder is',
+        default: cwd
       })
 
     // Allow commands to register themselves
-    for (let command of this.commands) command(cli, this)
+    for (let factory of this.commands) factory(cli, this)
 
     // Run the CLI
     let argv = cli.parse()
@@ -110,11 +121,7 @@ export class Dashund {
     let server = createServer(app)
 
     if (this.options.corsHosts.length > 0) {
-      app.use(
-        cors({
-          origin: this.options.corsHosts
-        })
-      )
+      app.use(cors({ origin: this.options.corsHosts }))
     }
 
     // Register JSON API middleware
@@ -268,9 +275,10 @@ export class Dashund {
 
       // Handle subscription messages
       if (type === 'sub') {
-        let subs = this.subscriptions.get(params.target) || []
-        subs.push(socket)
-        this.subscriptions.set(params.target, subs)
+        if (this.subscriptions.has(params.target) === false) {
+          throw new Error(`Unknown endpoint ${params.target}`)
+        }
+        this.subscriptions.get(params.target)!.push(socket)
       }
 
       // Handle unsubscribe messages

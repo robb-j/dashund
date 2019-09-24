@@ -43,6 +43,22 @@ export interface Endpoint {
 }
 
 export function validateEndpoint(endpoint: Endpoint) {
+  if (typeof endpoint.name !== 'string') {
+    throw new Error('endpoint.name missing (should be a string)')
+  }
+
+  if (typeof endpoint.interval !== 'string') {
+    throw new Error('endpoint.interval missing  (should be a string)')
+  }
+
+  if (!Array.isArray(endpoint.requiredTokens)) {
+    throw new Error('endpoint.requiredTokens missing (should be a string[]')
+  }
+
+  if (typeof endpoint.handler !== 'function') {
+    throw new Error('endpoint.handler is missing (should be a function')
+  }
+
   // Ensure a valid interval – https://www.npmjs.com/package/ms
   if (ms(endpoint.interval) === undefined) {
     throw new Error('invalid interval')

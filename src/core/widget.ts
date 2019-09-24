@@ -4,6 +4,7 @@ export type Zone = Widget[]
 
 export interface Widget {
   type: string
+  id: string
   [idx: string]: any
 }
 
