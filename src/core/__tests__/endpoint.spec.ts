@@ -81,7 +81,7 @@ describe('#performEndpoint', () => {
     tokenFactory = {
       createFromCLI: jest.fn(),
       hasExpired: jest.fn(() => false),
-      refreshToken: jest.fn(async () => null)
+      refreshToken: jest.fn(async () => undefined)
     }
 
     config = new Config()
