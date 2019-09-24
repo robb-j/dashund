@@ -15,3 +15,9 @@ export class ExpiredTokenError extends Error {
     super(`${tokenName} token has expired`)
   }
 }
+
+export class TokenReauthFailedError extends Error {
+  constructor(public tokenName: string) {
+    super(`Reauthentication failed: '${tokenName}'`)
+  }
+}

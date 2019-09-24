@@ -30,7 +30,7 @@ describe('#performTokenRefresh', () => {
   })
 
   it('should fail if no token is returned', async () => {
-    mocked(factory.refreshToken).mockResolvedValue(null)
+    mocked(factory.refreshToken).mockResolvedValue(undefined)
 
     let promise = performTokenRefresh(token, factory, config)
     expect(promise).rejects.toThrow(ExpiredTokenError)
@@ -50,5 +50,15 @@ describe('#performTokenRefresh', () => {
     await performTokenRefresh(token, factory, config)
 
     expect(config.isDirty).toBe(true)
+  })
+
+  it('should only trigger a reauth once', async () => {
+    await Promise.all([
+      performTokenRefresh(token, factory, config),
+      performTokenRefresh(token, factory, config),
+      performTokenRefresh(token, factory, config)
+    ])
+
+    expect(factory.refreshToken).toBeCalledTimes(1)
   })
 })

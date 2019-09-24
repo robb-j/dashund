@@ -76,13 +76,13 @@ export async function performEndpoint(
       let token = config.tokens.get(tokenName)!
       let factory = config.tokenFactories.get(tokenName)!
 
-      if (performTokenRefresh && factory.hasExpired(token)) {
+      // Try to refresh the token if it has expired
+      if (performTokenRefresh) {
         await performTokenRefresh(token, factory, config)
       }
     }
 
     // Fetch data using the handler
-    // NOTE: await is needed here so ReauthError is caught
     let data = await endpoint.handler({
       zones: config.zones,
       tokens: config.tokens
@@ -93,18 +93,19 @@ export async function performEndpoint(
     // Look for ReauthErrors
     // -> If so and we are allowed to refresh, refresh and retry the endpoint
     if (error instanceof ReauthError) {
+      // Fail now if we have no way of refreshing the token
+      if (!performTokenRefresh) {
+        return EndpointResult.notAuthenticated()
+      }
+
       let token = config.tokens.get(error.tokenName)
       let factory = config.tokenFactories.get(error.tokenName)
 
-      if (performTokenRefresh) {
-        // Try to reauthenticate the token, skipping the hasExpired check
-        await performTokenRefresh(token!, factory!, config, true)
+      // Try to reauthenticate the token, skipping the hasExpired check
+      await performTokenRefresh(token!, factory!, config, true)
 
-        // Try to run the endpoint again, skipping endpoint reauth check
-        return performEndpoint(endpoint, config)
-      } else {
-        return EndpointResult.notAuthenticated()
-      }
+      // Try to run the endpoint again, skipping endpoint reauth check
+      return performEndpoint(endpoint, config)
     }
 
     if (error instanceof ExpiredTokenError) {

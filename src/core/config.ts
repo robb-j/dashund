@@ -7,6 +7,8 @@ import { sharedLogger } from '../utils'
 import { Token, TokenFactory } from './token'
 import { Widget, WidgetFactory } from './widget'
 
+type TokenRefresh = Promise<Token | undefined>
+
 export const CONFIG_FOLDER = '.dashund'
 
 export class Config {
@@ -15,6 +17,7 @@ export class Config {
   widgetFactories: Map<string, WidgetFactory>
   tokenFactories: Map<string, TokenFactory>
   isDirty: boolean
+  refreshPromises: Map<string, TokenRefresh>
 
   constructor(widgetFactories = new Map(), tokenFactories = new Map()) {
     this.zones = new Map()
@@ -22,6 +25,7 @@ export class Config {
     this.widgetFactories = widgetFactories
     this.tokenFactories = tokenFactories
     this.isDirty = false
+    this.refreshPromises = new Map()
   }
 
   static from(
