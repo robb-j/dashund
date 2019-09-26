@@ -8,8 +8,6 @@ type Params = DefaultCLIArgs & {
 }
 
 async function handleCommand(dashund: Dashund, argv: Arguments<Params>) {
-  console.log('...')
-
   try {
     let config = dashund.loadConfig(argv.path)
 
