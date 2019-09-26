@@ -16,7 +16,8 @@ import {
   validateWidgetFactory,
   performEndpoint,
   performTokenRefresh,
-  CommandFactory
+  CommandFactory,
+  validateEndpoint
 } from './core'
 
 import { sharedLogger } from './utils'
@@ -67,14 +68,19 @@ export class Dashund {
 
     this.options = { ...defaultOptions, ...options }
 
-    // Make sure token factories are all subclasses
-    for (let factory of this.tokenFactories.values()) {
-      validateTokenFactory(factory)
+    // Make sure all endpoints are valid
+    for (let i in this.endpoints) {
+      validateEndpoint(this.endpoints[i], `endpoints[${i}]`)
     }
 
-    // Make sure token factories are all subclasses
-    for (let factory of this.widgetFactories.values()) {
-      validateWidgetFactory(factory)
+    // Make sure token factories are valid
+    for (let [type, factory] of this.tokenFactories) {
+      validateTokenFactory(factory, `tokens.${type}`)
+    }
+
+    // Make sure token factories are valid
+    for (let [type, factory] of this.widgetFactories) {
+      validateWidgetFactory(factory, `widgets.${type}`)
     }
 
     // Setup endpoint data and

@@ -96,9 +96,9 @@ export function assertValue(value: any, schema: Criteria, name?: string) {
 export function createErrorMessage(errors: SchemaError[]) {
   const messages = errors.map(humanizeSchemaError).join('\n- ')
 
-  return `Validation error: ${messages}`
+  return `Validation error: \n- ${messages}`
 }
 
 export function humanizeSchemaError(error: SchemaError) {
-  return `Expected ${error.path} to be ${error.expected} but got '${error.got}'`
+  return `Expected '${error.path}' to be ${error.expected} but got ${error.got}`
 }
