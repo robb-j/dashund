@@ -1,6 +1,14 @@
 import ms = require('ms')
 
-import { sharedLogger, ReauthError, ExpiredTokenError } from '../utils'
+import {
+  sharedLogger,
+  ReauthError,
+  ExpiredTokenError,
+  validate,
+  Criteria,
+  createErrorMessage,
+  assertValue
+} from '../utils'
 
 import { Config } from './config'
 import { Token, TokenRefresher } from './token'
@@ -42,26 +50,27 @@ export interface Endpoint {
   requiredTokens: string[]
 }
 
-export function validateEndpoint(endpoint: Endpoint) {
-  if (typeof endpoint.name !== 'string') {
-    throw new Error('endpoint.name missing (should be a string)')
+export function validateEndpoint(endpoint: Endpoint, name?: string) {
+  const schema: Criteria = {
+    name: 'string',
+    interval: 'string',
+    handler: 'function',
+    requiredTokens: 'string[]'
   }
 
-  if (typeof endpoint.interval !== 'string') {
-    throw new Error('endpoint.interval missing  (should be a string)')
-  }
-
-  if (!Array.isArray(endpoint.requiredTokens)) {
-    throw new Error('endpoint.requiredTokens missing (should be a string[]')
-  }
-
-  if (typeof endpoint.handler !== 'function') {
-    throw new Error('endpoint.handler is missing (should be a function')
-  }
+  assertValue(endpoint, schema, name)
 
   // Ensure a valid interval – https://www.npmjs.com/package/ms
   if (ms(endpoint.interval) === undefined) {
-    throw new Error('invalid interval')
+    throw new Error(
+      createErrorMessage([
+        {
+          path: name ? `${name}.interval` : 'interval',
+          expected: 'string (ms formatted)',
+          got: 'ms'
+        }
+      ])
+    )
   }
 }
 

@@ -1,4 +1,5 @@
 import { Dashund } from '../dashund'
+import { assertValue, Criteria } from '../utils'
 
 export type Zone = Widget[]
 
@@ -14,7 +15,11 @@ export interface WidgetFactory {
   requiredTokens?: string[]
 }
 
-export function validateWidgetFactory(value: any) {
-  // TODO: ...
-  return true
+export function validateWidgetFactory(value: any, name?: string) {
+  const schema: Criteria = {
+    createFromCLI: 'function',
+    requiredEndpoints: 'string[]',
+    requiredTokens: 'string[]'
+  }
+  assertValue(value, schema, name)
 }

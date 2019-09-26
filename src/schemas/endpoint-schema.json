@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://dashund.r0b.io/schemas/token-factory.json",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "interval": { "type": "string" },
+    "handler": { "type": "function" },
+    "requiredTokens": {
+      "type": "array",
+      "items": { "type": "number" }
+    }
+  },
+  "required": ["createFromCLI"]
+}

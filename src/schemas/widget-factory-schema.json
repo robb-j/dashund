@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://dashund.r0b.io/schemas/widget-factory.json",
+  "type": "object",
+  "properties": {
+    "createFromCLI": { "type": "function" },
+    "requiredEndpoints": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requiredTokens": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["createFromCLI"]
+}

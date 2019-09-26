@@ -61,7 +61,7 @@ describe('#validateEndpoint', () => {
         requiredTokens: []
       })
 
-    expect(init).toThrow(/invalid interval/)
+    expect(init).toThrow(/Expected interval to be string/i)
   })
 })
 

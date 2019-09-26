@@ -4,7 +4,9 @@ import { Config } from './config'
 import {
   sharedLogger,
   ExpiredTokenError,
-  TokenReauthFailedError
+  TokenReauthFailedError,
+  assertValue,
+  Criteria
 } from '../utils'
 
 export interface Token {
@@ -70,7 +72,11 @@ export async function performTokenRefresh(
   }
 }
 
-export function validateTokenFactory(value: any) {
-  // TODO: ...
-  return true
+export function validateTokenFactory(value: any, name?: string) {
+  const schema: Criteria = {
+    createFromCLI: 'function',
+    hasExpired: 'function',
+    refreshToken: 'function'
+  }
+  assertValue(value, schema, name)
 }
