@@ -15,6 +15,7 @@ Tools for making dashboards as simple and quick as possible
     - [A Widget](#a-widget)
     - [An endpoint](#an-endpoint)
     - [Configuring dashund](#configuring-dashund)
+  - [Example usage](#example-usage)
 
 <!-- toc-tail -->
 
