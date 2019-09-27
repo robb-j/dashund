@@ -9,13 +9,13 @@ Tools for making dashboards as simple and quick as possible
 - [What is this?](#what-is-this)
 - [Project components](#project-components)
 - [File structure](#file-structure)
-  - [The CLI](#the-cli)
-  - [The API](#the-api)
-    - [A Token](#a-token)
-    - [A Widget](#a-widget)
-    - [An endpoint](#an-endpoint)
-    - [Configuring dashund](#configuring-dashund)
-  - [Example usage](#example-usage)
+- [The CLI](#the-cli)
+- [The API](#the-api)
+  - [A Token](#a-token)
+  - [A Widget](#a-widget)
+  - [An endpoint](#an-endpoint)
+  - [Configuring dashund](#configuring-dashund)
+- [Example usage](#example-usage)
 
 <!-- toc-tail -->
 
@@ -64,7 +64,7 @@ server.js      # imports dashund and calls runServer(...)
   tokens.json  # JSON config for access tokens
 ```
 
-### The CLI
+## The CLI
 
 The CLI is designed to be interactive-first, to provide the best human experience.
 Its inspired by kubernete's resource-based approach with the resources being
@@ -85,9 +85,9 @@ Options:
   --path      The path where your .dashund folder is              [default: cwd]
 ```
 
-### The API
+## The API
 
-#### A Token
+### A Token
 
 First you'll want a token, a factory for authenticating to a 3rd party service,
 e.g. **tokens.js**
@@ -137,7 +137,7 @@ exports.GitHub = {
 }
 ```
 
-#### A Widget
+### A Widget
 
 Second you'll need a widget which will render things on the front end,
 e.g. **widgets.js**
@@ -162,7 +162,7 @@ exports.GitHubActivity = {
 }
 ```
 
-#### An endpoint
+### An endpoint
 
 Third create endpoints which use the tokens to fetch data,
 e.g. **endpoints.js**
@@ -185,7 +185,7 @@ module.exports = [
 ]
 ```
 
-#### Configuring dashund
+### Configuring dashund
 
 Next, create your instance, e.g. **dashund.js**
 
@@ -221,7 +221,7 @@ const dashund = require('./dashund')
 
 Now you can run the cli with `node cli.js` and the server with `node server.js`.
 
-### Example usage
+## Example usage
 
 Here are some example requests with [httpie](https://httpie.org/)
 
