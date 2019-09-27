@@ -30,7 +30,7 @@ and an `Endpoint` to poll for data at a set interval.
 
 You use the CLI to create an authentication using your `Token`.
 Then you run dashund as a server which performs your `Endpoint`s using those tokens
-(re-authenticating when needed) and re-serves the responses over http and publishes `WebSocket` events.
+(re-authenticating when needed) and re-serve the responses over http and publish `WebSocket` events.
 
 > The CLI is designed to be run accross SSH so you can perform web-based hooks
 > on your local machine and store the values on your remote server.
