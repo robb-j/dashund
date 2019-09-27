@@ -15,7 +15,8 @@
     "prettier": "prettier --write '**/*.{js,ts,tsx,json,css,md}'",
     "start": "node -r dotenv/config dist/index.js",
     "test": "jest",
-    "dev:cli": "npm run build &> /dev/null; node example/cli.js"
+    "dev:cli": "npm run build &> /dev/null; node example/cli.js",
+    "generate-readme-toc": "md-toc -i"
   },
   "keywords": [],
   "engines": {
@@ -36,6 +37,7 @@
     "yargs": "^13.2.4"
   },
   "devDependencies": {
+    "@robb_j/md-toc": "^0.3.0",
     "@types/cors": "^2.8.6",
     "@types/express": "^4.17.1",
     "@types/jest": "^24.0.18",

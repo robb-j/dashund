@@ -4,11 +4,18 @@ const prompts = require('prompts')
 const TestToken = {
   async createFromCLI() {
     return { token: 'some_top_secret_value' }
+  },
+  hasExpired(token) {
+    return false
+  },
+  refreshToken(token) {
+    return null
   }
 }
 
 const TestWidget = {
   requiredEndpoints: ['test/endpoint'],
+  requiredTokens: ['TestToken'],
 
   async createFromCLI() {
     const { title } = await prompts({

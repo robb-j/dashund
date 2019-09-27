@@ -75,12 +75,12 @@ export class Dashund {
 
     // Make sure token factories are valid
     for (let [type, factory] of this.tokenFactories) {
-      validateTokenFactory(factory, `tokens.${type}`)
+      validateTokenFactory(factory, type)
     }
 
     // Make sure token factories are valid
     for (let [type, factory] of this.widgetFactories) {
-      validateWidgetFactory(factory, `widgets.${type}`)
+      validateWidgetFactory(factory, type)
     }
 
     // Setup endpoint data and
@@ -100,18 +100,22 @@ export class Dashund {
         describe: 'The path where your .dashund folder is',
         default: cwd
       })
+      .command(
+        '$0',
+        false,
+        yargs => yargs,
+        () => {
+          console.log('Unknown command\n')
+          cli.showHelp()
+          process.exit(1)
+        }
+      )
 
     // Allow commands to register themselves
     for (let factory of this.commands) factory(cli, this)
 
     // Run the CLI
-    let argv = cli.parse()
-
-    // Fail if there was no command
-    if (argv._[0] === undefined) {
-      sharedLogger.error('Unknown command')
-      process.exit(1)
-    }
+    cli.parse()
   }
 
   /** Run the server */

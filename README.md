@@ -2,8 +2,42 @@
 
 Tools for making dashboards as simple and quick as possible
 
-> This document is an exploration into what the project could be
-> It aims to scope out the initial features.
+<!-- toc-head -->
+
+## Table of contents
+
+- [What is this?](#what-is-this)
+- [Project components](#project-components)
+- [File structure](#file-structure)
+  - [The CLI](#the-cli)
+  - [The API](#the-api)
+    - [A Token](#a-token)
+    - [A Widget](#a-widget)
+    - [An endpoint](#an-endpoint)
+    - [Configuring dashund](#configuring-dashund)
+
+<!-- toc-tail -->
+
+## What is this?
+
+Dashund is a framework for creating dashboards, aiming at doing the boring parts
+of authenticating and connecting RESTful APIs together and re-serving content.
+
+Say you connect to Spotify to get songs using their RESTful API
+and you want to show whats playing on a screen.
+You create a `Token` in Dashund to handle the auth process
+and an `Endpoint` to poll for data at a set interval.
+
+You use the CLI to create an authentication using your `Token`.
+Then you run dashund as a server which performs your `Endpoint`s using those tokens
+(re-authenticating when needed) and re-serves the responses over http and publishes `WebSocket` events.
+
+> The CLI is designed to be run accross SSH so you can perform web-based hooks
+> on your local machine and store the values on your remote server.
+> I.E. doing a OAuth2 web flow and storing the tokens back on the server
+
+Your web app can now initially fetch the value using the http API
+and subscribe to WebSocket events to be pushed new values.
 
 ## Project components
 
@@ -15,45 +49,44 @@ Tools for making dashboards as simple and quick as possible
 - UI utilities to subscribe to the sockets (WIP)
 - UI components for rendering widgets in zones (WIP)
 
-## How it should work
+## File structure
 
-> Dashund **is not** an all in one solution, its more of a framework for scaffolding your own solution.
-> It aims at reducing the code you write as much as possible, but not entirely.
+Dashund stores access tokens and widgets locally, wherever you are running it,
+in a folder called `.dashund`
 
-A CLI is used to configure zones of the dashboard and put widgets in them.
-The CLI is also authenticates with 3rd party services and stores and refreshes access tokens.
-
-It creates a file structure like this:
-
-```
+```bash
+dashund.js     # module.exports = new Dashund(...)
+cli.js         # imports dashund and calls runCLI(...)
+server.js      # imports dashund and calls runServer(...)
 .dashund
-  widgets.yml
-  tokens.json
+  widgets.yml  # YAML config for where widgets are stored
+  tokens.json  # JSON config for access tokens
 ```
-
-There is then an API to read in the configuration generated from the CLI
-and allow you to scaffold an API using those tokens with web socket subscriptions.
-
-There is finally UI tools to subscribe to those endpoints
-and utilities to render widgets within their zones.
 
 ### The CLI
+
+The CLI is designed to be interactive-first, to provide the best human experience.
+Its inspired by kubernete's resource-based approach with the resources being
+`Token`, `Widget` and `Zone`.
 
 ```
 Usage: dashund <command>
 
 Commands:
-  cli.js get                         Get a Dashund resource from the local .dashund folder
-  cli.js create <zone|widget|token>  Create a dashund resource
+  cli.js get            Display resources
+  cli.js create [type]  Create a new resource
+  cli.js check          Check token authentication
+  cli.js serve [port]   Run the dashund server
 
 Options:
   --version   Show version number                                      [boolean]
   --help, -h  Show help                                                [boolean]
-  --path      The path to your .dashund folder
-
+  --path      The path where your .dashund folder is              [default: cwd]
 ```
 
 ### The API
+
+#### A Token
 
 First you'll want a token, a factory for authenticating to a 3rd party service,
 e.g. **tokens.js**
@@ -64,11 +97,12 @@ const axios = require('axios')
 
 exports.GitHub = {
   //
-  // One method for creating the token, with user input
-  // and a temporary server for handling callbacks
+  // A method for creating the token, with user input
+  // and potentially a temporary server for handling callbacks
   //
-  async createFromCLI() {
-    console.log('Visit http://localhost:3000')
+  async createFromCLI(dashund) {
+    const callbackURL = dashund.makeCallbackURL()
+    console.log(`Visit ${callbackURL}`)
 
     let token = null
     await runTemporaryServer(3000, (app, close) => {
@@ -83,16 +117,26 @@ exports.GitHub = {
   },
 
   //
-  // A second method for re-authenticating if a token becomes invalid / expires
+  // A second method for letting dashund know when that token has expired
+  //
+  hasExpired(token) {
+    return token.expiresAt < Date.now()
+  },
+
+  //
+  // A third method for re-authenticating if a token becomes invalid / expires
   // - This can't have user input
   //
-  async reauthenticate(token) {
-    if (token.expiry > Date.now()) return
-    let res = await axios.post('...')
+  async refreshToken(token) {
+    let res = await axios.post('...', {
+      refresh_token: token.refreshToken
+    })
     return res.data
   }
 }
 ```
+
+#### A Widget
 
 Second you'll need a widget which will render things on the front end,
 e.g. **widgets.js**
@@ -117,6 +161,8 @@ exports.GitHubActivity = {
 }
 ```
 
+#### An endpoint
+
 Third create endpoints which use the tokens to fetch data,
 e.g. **endpoints.js**
 
@@ -129,13 +175,16 @@ module.exports = [
     requiredTokens: ['GitHub'],
     interval: '5m',
     handler: async ctx => {
-      let params = { token: ctx.tokens.get('GitHub') }
-      let res = await axios.get('...', { params })
+      let { accessToken } = ctx.tokens.get('GitHub')
+      let headers = { authorization: `Bearer ${accessToken}` }
+      let res = await axios.get('...', { headers })
       return res.data
     }
   }
 ]
 ```
+
+#### Configuring dashund
 
 Next, create your instance, e.g. **dashund.js**
 
@@ -169,7 +218,11 @@ const dashund = require('./dashund')
 }
 ```
 
-Example requests with [httpie](https://httpie.org/)
+Now you can run the cli with `node cli.js` and the server with `node server.js`.
+
+### Example usage
+
+Here are some example requests with [httpie](https://httpie.org/)
 
 ```bash
 # Fetch a specify resource, calling it's handler
