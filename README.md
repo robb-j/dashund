@@ -212,10 +212,10 @@ Finally create a server entrypoint, **server.js**
 ```js
 const dashund = require('./dashund')
 
-;async () => {
+;(async () => {
   await dashund.runServer(3000)
   console.log('Listening on :3000')
-}
+})()
 ```
 
 Now you can run the cli with `node cli.js` and the server with `node server.js`.
