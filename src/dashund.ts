@@ -148,6 +148,11 @@ export class Dashund {
     return Config.from(path, this.widgetFactories, this.tokenFactories)
   }
 
+  /** Generate a callback url relative options.hostname */
+  makeCallbackURL({ path = '/callback', port = 1234 } = {}) {
+    return this.options.hostname + ':' + port + path
+  }
+
   runPreflightChecks(config: Config) {
     // TODO: ensure widgets map to factories
     // TODO: ensure widgets have required endpoints & tokens
