@@ -233,6 +233,6 @@ Example socket subscriptions with [akita-ws](https://github.com/robb-j/akita):
 
 ```bash
 akita wss://dashboard.io
-> {"type": "subscribe", "name": "github/activity"}
-> {"type": "unsubscribe", "name": "github/activity"}
+> {"type": "sub", "name": "github/activity"}
+> {"type": "unsub", "name": "github/activity"}
 ```
