@@ -178,6 +178,21 @@ export class Dashund {
       res.send({ zones: payload })
     })
 
+    // Add a route to return widget info
+    router.get('/widget-types', (req, res) => {
+      let payload: any = {}
+
+      this.widgetFactories.forEach((factory, name) => {
+        payload[name] = {
+          name: name,
+          endpoints: factory.requiredEndpoints,
+          tokens: factory.requiredTokens
+        }
+      })
+
+      res.send({ widgetTypes: payload })
+    })
+
     // Add a route to show the available endpoints
     router.get('/endpoints', (req, res) => {
       let payload = []
