@@ -237,3 +237,14 @@ akita wss://dashboard.io
 > {"type": "sub", "name": "github/activity"}
 > {"type": "unsub", "name": "github/activity"}
 ```
+
+## Extra configuration
+
+After the widgets, tokens and endpoints you can also pass an extra `options`
+object to configure dashund more.
+
+- `path` is the relative path to your `.dashund` folder
+- `hostname` is the hostname the cli will appear as when authenticating tokens
+- `corsHosts` is an array of hosts that the server will accept cors requests from
+- `authenticator` is a function to authenticate some requests and all sockets,
+  it gets passed an [http.IncomingMessage](https://nodejs.org/api/http.html#http_class_http_incomingmessage)

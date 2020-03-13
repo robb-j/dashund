@@ -4,7 +4,7 @@ import ms = require('ms')
 import * as express from 'express'
 import * as cors from 'cors'
 import * as WebSocket from 'ws'
-import { createServer, Server } from 'http'
+import { createServer, Server, IncomingMessage } from 'http'
 
 import {
   Config,
@@ -22,11 +22,13 @@ import {
 
 import { sharedLogger } from './utils'
 import { defaultCommands } from './commands'
+import { NextFunction } from 'express'
 
 export type DashundOptions = {
   path: string
   hostname: string
   corsHosts: string[]
+  authenticator: (request: IncomingMessage) => boolean
 }
 
 export type DefaultCLIArgs = {
@@ -38,7 +40,8 @@ type Raw<T> = { [index: string]: T }
 const defaultOptions = {
   path: process.cwd(),
   hostname: 'http://localhost',
-  corsHosts: []
+  corsHosts: [],
+  authenticator: () => true
 }
 
 export class Dashund {
@@ -167,8 +170,13 @@ export class Dashund {
   createAPIMiddleware(config: Config) {
     let router = express.Router()
 
+    const auth: express.RequestHandler = (req, res, next) => {
+      if (this.options.authenticator(req)) next()
+      else res.status(401).send({ msg: 'Not authenticated' })
+    }
+
     // Add a route to show widget/zone configuration
-    router.get('/zones', (req, res) => {
+    router.get('/zones', auth, (req, res) => {
       let payload: any[] = []
 
       config.zones.forEach((widgets, name) => {
@@ -205,7 +213,7 @@ export class Dashund {
     })
 
     // EXPERIMENTAL: Add a route to show subscriptions
-    router.get('/subs', (req, res) => {
+    router.get('/subs', auth, (req, res) => {
       let payload: any = {}
 
       this.subscriptions.forEach((subs, name) => {
@@ -228,7 +236,7 @@ export class Dashund {
     for (let endpoint of this.endpoints) {
       let { name, interval, handler } = endpoint
 
-      router.get(sanitizeName(name), async (req, res) => {
+      router.get(sanitizeName(name), auth, async (req, res) => {
         let result = this.endpointData.get(endpoint.name)
 
         if (!result) result = EndpointResult.notFound()
@@ -241,12 +249,23 @@ export class Dashund {
   }
 
   attachSocketServer(config: Config, httpServer: Server) {
-    let wss = new WebSocket.Server({ server: httpServer })
+    let wss = new WebSocket.Server({ noServer: true })
 
     // Register events when new sockets connect
     wss.on('connection', ws => {
       ws.on('message', data => this.handleSocket(ws, data))
       ws.on('close', () => this.clearSocket(ws))
+    })
+
+    // Handle the http upgrade ourself, authenticate and pass back to wss
+    httpServer.on('upgrade', (request, socket, head) => {
+      if (this.options.authenticator(request) === false) {
+        socket.destroy()
+        return
+      }
+      wss.handleUpgrade(request, socket, head, ws => {
+        wss.emit('connection', ws, request)
+      })
     })
 
     return wss
