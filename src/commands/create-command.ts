@@ -47,8 +47,8 @@ handlers.set('token', async (dashund, argv) => {
   let token = await factory.createFromCLI(dashund)
 
   config.tokens.set(type, {
-    type: type,
-    ...token
+    ...token,
+    type: type
   })
 
   config.save(argv.path)
@@ -88,9 +88,9 @@ handlers.set('widget', async (dashund, argv) => {
   const widget = await factory.createFromCLI(dashund)
 
   config.zones.get(zone)!.push({
+    ...widget,
     type: type,
-    id: identifier,
-    ...widget
+    id: identifier
   })
 
   config.save(argv.path)

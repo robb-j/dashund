@@ -52,8 +52,8 @@ export async function performTokenRefresh(
 
     // Generate a token by composing it with it's type
     const newToken: Token = {
-      type: token.type,
-      ...newValue
+      ...newValue,
+      type: token.type
     }
 
     // Store the new token

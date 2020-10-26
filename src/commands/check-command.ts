@@ -81,8 +81,8 @@ async function handleCommand(dashund: Dashund, argv: Arguments<Params>) {
       if (!confirmRecreate) continue
 
       config.tokens.set(token.type, {
-        type: token.type,
-        ...(await factory.createFromCLI(dashund))
+        ...(await factory.createFromCLI(dashund)),
+        type: token.type
       })
 
       config.save(argv.path)

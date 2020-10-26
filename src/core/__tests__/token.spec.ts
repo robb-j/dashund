@@ -16,9 +16,15 @@ describe('#performTokenRefresh', () => {
     config.tokens.set('MockToken', token)
 
     factory = {
-      createFromCLI: jest.fn(async () => ({ type: 'token', fromCLI: true })),
+      createFromCLI: jest.fn(async () => ({
+        type: 'MockToken',
+        fromCLI: true
+      })),
       hasExpired: jest.fn(() => true),
-      refreshToken: jest.fn(async () => ({ type: 'token', refreshed: true }))
+      refreshToken: jest.fn(async () => ({
+        type: 'MockToken',
+        refreshed: true
+      }))
     }
   })
 
@@ -41,7 +47,7 @@ describe('#performTokenRefresh', () => {
 
     let newToken = config.tokens.get('MockToken')
     expect(newToken).toEqual({
-      type: 'token',
+      type: 'MockToken',
       refreshed: true
     })
   })
